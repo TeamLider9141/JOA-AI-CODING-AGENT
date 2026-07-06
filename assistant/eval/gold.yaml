@@ -1,0 +1,20 @@
+- question: Where is the database initialized and tables created?
+  expect_path_contains: db.py
+- question: Where is a user's crystal balance changed?
+  expect_path_contains: db.py
+- question: How does the scheduler run the daily reset loop?
+  expect_path_contains: scheduler.py
+- question: Where is the admin-only permission check implemented?
+  expect_path_contains: handlers/admin.py
+- question: Where are the FSM states for withdrawal requests defined?
+  expect_path_contains: states.py
+- question: Where is the main menu keyboard built?
+  expect_path_contains: keyboards.py
+- question: How is the .env file loaded into config?
+  expect_path_contains: config.py
+- question: Where is a referral reward added to a user?
+  expect_path_contains: db.py
+- question: How is the current Tashkent time computed?
+  expect_path_contains: helpers.py
+- question: Where does the bot check if a user completed a task?
+  expect_path_contains: db.py

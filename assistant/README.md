@@ -42,11 +42,17 @@ The agent plans one step at a time, emitting a JSON tool call
 (`read_file` / `write_file` / `run_cmd` / `search_code`) that we parse and
 execute, feeding the result back until it returns a final answer. All file
 access is jailed to the target repo root; writes and commands require
-interactive confirmation. Loop is capped at 10 iterations.
+interactive confirmation. Loop is capped at 15 iterations.
 
 Verified end-to-end on `crystal_bot`: a read-only task correctly located
 `init_db` and summarized the schema; a write task exercised the confirm gate
 in both directions (declined → no file; accepted → file created).
 
-Phase 4 (next, separate plan): cross-encoder reranker, multi-step planner,
-and an auto-fix loop (run tests → read failure → edit → re-run).
+The agent maintains a TODO scratchpad (the `plan` action) that is re-shown
+each turn so it keeps multi-step chores on track, and `run_cmd` results include
+the exit code so it can notice a failure and re-run after fixing. Verified on a
+throwaway git repo: given "stage and commit these changes", the agent planned,
+ran `git add`/`git commit` via confirmed `run_cmd` steps, and produced a clean
+commit.
+
+Still deferred (separate plan): a cross-encoder reranker for retrieval quality.

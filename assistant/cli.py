@@ -5,7 +5,7 @@ import typer
 from assistant import config
 from assistant.indexer.pipeline import build_index, search_index
 from assistant.llm.ollama_client import OllamaClient, OllamaError
-from assistant.agent.runner import run_agent
+from assistant.agent.runner import AgentSession, run_agent
 from assistant.agent.tools import ToolContext
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
@@ -113,6 +113,51 @@ def agent(
         raise typer.Exit(1)
     typer.echo("--- answer ---")
     typer.echo(answer)
+
+
+def _repl_loop(session, read_line, echo) -> None:
+    """Drive an AgentSession from a line source until exit/EOF.
+
+    `read_line()` returns the next input line (raising EOFError at end of
+    input); `echo(text)` prints a line. Kept separate from the CLI command so
+    the loop is testable without a live model.
+    """
+    echo("joa session — type 'exit' or Ctrl-D to quit")
+    while True:
+        try:
+            line = read_line()
+        except EOFError:
+            return
+        stripped = line.strip()
+        if stripped in ("exit", "quit"):
+            return
+        if not stripped:
+            continue
+        try:
+            answer = session.send(stripped)
+        except OllamaError as exc:
+            echo(str(exc))
+            continue
+        echo(answer)
+
+
+@app.command()
+def repl(
+    repo: Path = typer.Option(Path("."), "--repo", exists=True,
+                              file_okay=False),
+):
+    """Interactive agent session over the repo (defaults to current dir)."""
+    data_dir = _data_dir(repo)
+    _require_index(data_dir)
+    client = OllamaClient()
+    ctx = ToolContext(
+        root=repo.resolve(),
+        data_dir=data_dir,
+        embedder=client.embed,
+        confirm=lambda msg: typer.confirm(msg),
+    )
+    session = AgentSession(ctx, client)
+    _repl_loop(session, lambda: input("joa> "), typer.echo)
 
 
 def build_prompt(question: str,

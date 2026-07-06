@@ -16,42 +16,58 @@ def build_reminder(task: str, plan: list[str], iters_left: int) -> str:
     return f"(Task: {task} | Plan: {plan_str} | {iters_left} iterations left)"
 
 
+class AgentSession:
+    """A continuing agent conversation: history persists across send() calls.
+
+    The plan scratchpad resets per send (each user request plans fresh), but
+    self.messages carries the whole conversation so later turns see earlier
+    context.
+    """
+
+    def __init__(self, ctx: ToolContext, client, max_iters: int = 15):
+        self.ctx = ctx
+        self.client = client
+        self.max_iters = max_iters
+        self.messages = [
+            {"role": "system", "content": build_system_prompt()},
+        ]
+
+    def send(self, task: str) -> str:
+        self.messages.append({"role": "user", "content": f"Task: {task}"})
+        plan: list[str] = []
+
+        for i in range(self.max_iters):
+            self.messages.append({
+                "role": "user",
+                "content": build_reminder(task, plan, self.max_iters - i),
+            })
+            reply = self.client.chat(self.messages)
+            self.messages.append({"role": "assistant", "content": reply})
+
+            action = _parse_with_retries(reply, self.messages, self.client)
+            if action is None:
+                return "could not parse a valid action from the model"
+
+            name = action["action"]
+            if name == "final":
+                return action.get("answer", "(no answer provided)")
+
+            if name == "plan":
+                plan, result = _apply_plan(action.get("args", {}))
+            else:
+                result = _run_tool(name, action.get("args", {}), self.ctx)
+            self.messages.append({"role": "user", "content": f"Result:\n{result}"})
+
+        return f"stopped after {self.max_iters} iterations without a final answer"
+
+
 def run_agent(task: str, ctx: ToolContext, client,
               max_iters: int = 15) -> str:
-    """Drive the plan->act->observe loop until the model says 'final'.
+    """One-shot agent run — a fresh session that handles a single task.
 
     `client` needs a `.chat(messages) -> str` method (OllamaClient qualifies).
-    A running todo list (set via the 'plan' action) is re-shown each turn.
     """
-    messages = [
-        {"role": "system", "content": build_system_prompt()},
-        {"role": "user", "content": f"Task: {task}"},
-    ]
-    plan: list[str] = []
-
-    for i in range(max_iters):
-        messages.append({
-            "role": "user",
-            "content": build_reminder(task, plan, max_iters - i),
-        })
-        reply = client.chat(messages)
-        messages.append({"role": "assistant", "content": reply})
-
-        action = _parse_with_retries(reply, messages, client)
-        if action is None:
-            return "could not parse a valid action from the model"
-
-        name = action["action"]
-        if name == "final":
-            return action.get("answer", "(no answer provided)")
-
-        if name == "plan":
-            plan, result = _apply_plan(action.get("args", {}))
-        else:
-            result = _run_tool(name, action.get("args", {}), ctx)
-        messages.append({"role": "user", "content": f"Result:\n{result}"})
-
-    return f"stopped after {max_iters} iterations without a final answer"
+    return AgentSession(ctx, client, max_iters).send(task)
 
 
 def _apply_plan(args: dict) -> tuple[list[str], str]:

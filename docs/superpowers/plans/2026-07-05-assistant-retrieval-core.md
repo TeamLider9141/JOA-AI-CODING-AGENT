@@ -1262,8 +1262,11 @@ def search_index(
 
     bm25 = BM25Store.load(data_dir / "bm25.json")
     bm25_results = bm25.search(query, config.BM25_TOP_K)
+    # BM25 first: on an RRF score tie (symmetric rank swap between the two
+    # retrievers), dict insertion order decides the winner. Exact lexical
+    # matches should win those ties over vector-similarity noise.
     return rrf_merge(
-        [vector_results, bm25_results],
+        [bm25_results, vector_results],
         k=config.RRF_K,
         top_k=config.FINAL_TOP_K,
     )

@@ -20,7 +20,7 @@ def walk_repo(root: Path) -> list[Path]:
     spec = None
     if gitignore.exists():
         spec = pathspec.PathSpec.from_lines(
-            "gitwildmatch", gitignore.read_text().splitlines())
+            "gitignore", gitignore.read_text().splitlines())
 
     files: list[Path] = []
     for path in sorted(root.rglob("*")):

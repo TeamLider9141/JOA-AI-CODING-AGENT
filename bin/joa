@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# joa — launcher for the local coding assistant.
+#   no args  → interactive agent session (repl) on the current directory
+#   args     → passed straight through to the CLI, e.g. joa ask "…"
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PY="$HERE/.venv/bin/python"
+export PYTHONPATH="$HERE${PYTHONPATH:+:$PYTHONPATH}"
+
+if [ "$#" -eq 0 ]; then
+    exec "$PY" -m assistant.cli repl --repo "$(pwd)"
+else
+    exec "$PY" -m assistant.cli "$@"
+fi

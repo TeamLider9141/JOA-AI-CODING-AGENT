@@ -56,3 +56,22 @@ ran `git add`/`git commit` via confirmed `run_cmd` steps, and produced a clean
 commit.
 
 Still deferred (separate plan): a cross-encoder reranker for retrieval quality.
+
+## Interactive session (`joa`)
+
+Put the launcher on your PATH once:
+
+    export PATH="$HOME/Desktop/system_llm/bin:$PATH"   # add to ~/.zshrc
+
+Then, from any indexed repo:
+
+    cd ~/Desktop/crystal_bot
+    joa                      # opens an interactive agent session
+    joa> add a docstring to change_balance
+    joa> now commit that change
+    joa> exit
+
+Each line is handled by the coding agent (read/write/run/search, with writes
+and commands confirmed), and the conversation carries across turns so
+follow-ups remember earlier context. `joa <args>` still works as a short form
+for the CLI, e.g. `joa ask "how does X work"` or `joa agent "fix the bug"`.

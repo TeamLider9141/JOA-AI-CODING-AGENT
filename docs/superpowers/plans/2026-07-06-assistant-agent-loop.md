@@ -386,7 +386,7 @@ TOOLS: dict[str, Callable[[ToolContext, dict], str]] = {
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `.venv/bin/pytest assistant/tests/test_tools.py -v`
-Expected: 10 passed
+Expected: 9 passed
 
 - [ ] **Step 5: Commit**
 

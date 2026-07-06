@@ -33,6 +33,15 @@ class OllamaClient:
                           {"model": config.EMBED_MODEL, "input": texts})
         return data["embeddings"]
 
+    def chat(self, messages: list[dict]) -> str:
+        data = self._post("/api/chat", {
+            "model": config.CHAT_MODEL,
+            "messages": messages,
+            "stream": False,
+            "options": {"num_ctx": config.NUM_CTX},
+        })
+        return data["message"]["content"]
+
     def chat_stream(self, messages: list[dict]) -> Iterator[str]:
         payload = {
             "model": config.CHAT_MODEL,

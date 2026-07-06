@@ -5,6 +5,8 @@ import typer
 from assistant import config
 from assistant.indexer.pipeline import build_index, search_index
 from assistant.llm.ollama_client import OllamaClient, OllamaError
+from assistant.agent.runner import run_agent
+from assistant.agent.tools import ToolContext
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 
@@ -87,6 +89,30 @@ def ask(
     except OllamaError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(1)
+
+
+@app.command()
+def agent(
+    task: str,
+    repo: Path = typer.Option(..., "--repo", exists=True, file_okay=False),
+):
+    """Run the coding agent: plan, call tools, and act on the repo."""
+    data_dir = _data_dir(repo)
+    _require_index(data_dir)
+    client = OllamaClient()
+    ctx = ToolContext(
+        root=repo.resolve(),
+        data_dir=data_dir,
+        embedder=client.embed,
+        confirm=lambda msg: typer.confirm(msg),
+    )
+    try:
+        answer = run_agent(task, ctx, client)
+    except OllamaError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1)
+    typer.echo("--- answer ---")
+    typer.echo(answer)
 
 
 def build_prompt(question: str,

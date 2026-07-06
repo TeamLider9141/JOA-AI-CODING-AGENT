@@ -3,10 +3,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from assistant import config
 from assistant.agent.safety import resolve_in_root
 from assistant.indexer.pipeline import Embedder, search_index
 
-RUN_CMD_TIMEOUT = 30  # seconds
 MAX_OUTPUT_CHARS = 4000  # keep tool results within the model's context
 
 
@@ -47,7 +47,9 @@ def write_file(ctx: ToolContext, args: dict) -> str:
 
 
 def run_cmd(ctx: ToolContext, args: dict,
-            timeout: int = RUN_CMD_TIMEOUT) -> str:
+            timeout: int | None = None) -> str:
+    if timeout is None:
+        timeout = config.RUN_CMD_TIMEOUT
     command = args["command"]
     if not ctx.confirm(f"run command: {command!r}?"):
         return "command cancelled by user"
@@ -58,7 +60,8 @@ def run_cmd(ctx: ToolContext, args: dict,
         )
     except subprocess.TimeoutExpired:
         return f"command timed out after {timeout}s"
-    return _truncate((proc.stdout + proc.stderr) or "(no output)")
+    output = (proc.stdout + proc.stderr) or "(no output)"
+    return _truncate(f"exit code: {proc.returncode}\n{output}")
 
 
 def search_code(ctx: ToolContext, args: dict) -> str:

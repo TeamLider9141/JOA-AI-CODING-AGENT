@@ -6,6 +6,7 @@ at a time. On each turn you MUST reply with exactly one JSON object and
 nothing else — no prose outside the JSON.
 
 Available actions:
+- {"action": "plan", "args": {"todo": ["step one", "step two"]}}
 - {"action": "read_file", "args": {"path": "relative/path.py"}}
 - {"action": "write_file", "args": {"path": "relative/path.py", "content": "..."}}
 - {"action": "run_cmd", "args": {"command": "pytest -q"}}
@@ -13,10 +14,15 @@ Available actions:
 - {"action": "final", "args": {}, "answer": "your answer to the user"}
 
 Rules:
+- For any task that needs more than one step, START by emitting a "plan"
+  action with an ordered todo list. Revise it with another "plan" action
+  whenever the situation changes.
 - Paths are always relative to the repo root. Never use absolute paths or "..".
 - After each action you will be shown its result, then take the next step.
 - Use search_code to locate code, read_file to inspect it, write_file to
   change it, run_cmd to run tests or commands.
+- run_cmd results begin with "exit code: N". If N is not 0 the command
+  failed — read the error, fix the cause, and re-run to verify before moving on.
 - When the task is done, reply with the "final" action and put your answer
   in the "answer" field.
 """

@@ -34,9 +34,19 @@ scores vector hit@5: 10/10, hybrid hit@5: 10/10.
 See `docs/superpowers/specs/2026-07-05-local-coding-assistant-design.md`.
 Models and retrieval parameters live in `assistant/config.py` only.
 
-## Agent loop (next)
+## Agent
 
-Tool-calling agent (spec Phases 3–4) is a separate, not-yet-written plan:
-`read_file`/`write_file`/`run_cmd`/`search_code` tools, path jail, JSON
-tool-call protocol, diff-confirmation on writes. Builds on `search_index()`
-and `OllamaClient` from this plan.
+    .venv/bin/python -m assistant.cli agent "task" --repo <repo-path>
+
+The agent plans one step at a time, emitting a JSON tool call
+(`read_file` / `write_file` / `run_cmd` / `search_code`) that we parse and
+execute, feeding the result back until it returns a final answer. All file
+access is jailed to the target repo root; writes and commands require
+interactive confirmation. Loop is capped at 10 iterations.
+
+Verified end-to-end on `crystal_bot`: a read-only task correctly located
+`init_db` and summarized the schema; a write task exercised the confirm gate
+in both directions (declined → no file; accepted → file created).
+
+Phase 4 (next, separate plan): cross-encoder reranker, multi-step planner,
+and an auto-fix loop (run tests → read failure → edit → re-run).

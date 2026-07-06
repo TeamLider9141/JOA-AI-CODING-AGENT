@@ -23,12 +23,11 @@ BM25 hybrid retrieval (RRF), Ollama for embeddings and chat.
 
 ## Status
 
-Retrieval core (indexing, hybrid search, `ask`/`search`/`index` CLI) is built
-and tested — 35 tests passing. Not yet run against a real repo or evaluated
-end-to-end: that requires Ollama installed with `qwen2.5-coder:7b` and
-`nomic-embed-text` pulled (~6.5 GB), deferred pending user go-ahead. The
-`eval/` module (gold-question hit@5 comparison) is part of the next work
-session, once Ollama is in place.
+Retrieval core (indexing, hybrid search, `ask`/`search`/`index` CLI) is built,
+tested, and verified end-to-end — 35 unit tests passing, plus a real run
+against `~/Desktop/crystal_bot` (indexed in place, read-only): `search` and
+`ask` both return correct file:line results, and the 10-question gold eval
+scores vector hit@5: 10/10, hybrid hit@5: 10/10.
 
 ## Design
 

@@ -1,3 +1,6 @@
+import re
+import time
+
 from typer.testing import CliRunner
 
 from assistant.cli import app, _repl_loop
@@ -69,3 +72,24 @@ def test_repl_without_index_exits_nonzero(tmp_path):
     result = runner.invoke(app, ["repl", "--repo", str(tmp_path)])
     assert result.exit_code == 1
     assert "index" in result.output.lower()
+
+
+def test_repl_loop_echoes_elapsed_time_with_answer():
+    class SlowSession:
+        def __init__(self):
+            self.sent = []
+
+        def send(self, task):
+            self.sent.append(task)
+            time.sleep(0.05)
+            return "the answer"
+
+    session = SlowSession()
+    lines = iter(["do it", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append)
+
+    answer_line = next(o for o in out if "the answer" in o)
+    match = re.search(r"\((\d+(?:\.\d+)?)s\)", answer_line)
+    assert match, f"expected an elapsed-time suffix like (0.1s), got: {answer_line!r}"
+    assert float(match.group(1)) >= 0.05

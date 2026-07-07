@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 import typer
@@ -133,12 +134,14 @@ def _repl_loop(session, read_line, echo) -> None:
             return
         if not stripped:
             continue
+        start = time.perf_counter()
         try:
             answer = session.send(stripped)
         except OllamaError as exc:
             echo(str(exc))
             continue
-        echo(answer)
+        elapsed = time.perf_counter() - start
+        echo(f"{answer}\n({elapsed:.1f}s)")
 
 
 @app.command()

@@ -196,7 +196,7 @@ def _parse_ranking(reply: str, n: int) -> list[int] | None:
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `.venv/bin/pytest assistant/tests/test_rerank.py -v`
-Expected: 9 passed
+Expected: 8 passed
 
 - [ ] **Step 5: Commit**
 
@@ -482,7 +482,7 @@ Expected: all pass.
 - [ ] **Step 7: Run the full suite**
 
 Run: `.venv/bin/pytest -q`
-Expected: all pass (78 pre-existing + 9 + 2 + 2 = 91).
+Expected: all pass (87 pre-existing + 8 + 2 + 2 = 99). (Baseline is 87, not 78 — `joa` was added to the suite after this plan was written.)
 
 - [ ] **Step 8: Commit**
 
@@ -607,7 +607,7 @@ Expected: 4 passed
 - [ ] **Step 5: Run the full suite**
 
 Run: `.venv/bin/pytest -q`
-Expected: all pass (91 pre-existing + 4 = 95).
+Expected: all pass (99 pre-existing + 4 = 103).
 
 - [ ] **Step 6: Commit**
 

@@ -53,6 +53,20 @@ bin/joa --backend gemini                   # interaktiv REPL (Gemini)
 yo'q, chunki ular faqat embedding ishlatadi — embedding doim Ollama'da
 qoladi, backend tanlovidan qat'i nazar). Default: `ollama`.
 
+REPL sessiyasi ichida `/joamodel` yozib, o'rnatilgan Ollama modellari
+(masalan `qwen2.5-coder:1.5b`/`3b`/`7b`) yoki Gemini orasida raqam bilan
+almashtirish mumkin — sessiyani qayta ishga tushirmasdan:
+
+```
+joa> /joamodel
+1. qwen2.5-coder:1.5b
+2. qwen2.5-coder:7b
+3. gemini
+Raqamni tanlang:
+joa> 1
+✓ Model: qwen2.5-coder:1.5b
+```
+
 ## Testlar
 
 ```

@@ -88,3 +88,10 @@ and commands confirmed), and the conversation carries across turns so
 follow-ups remember earlier context. `joa <args>` still works as a short form
 for the CLI, e.g. `joa ask "how does X work"` or `joa agent "fix the bug"`.
 `joa --backend gemini` opens the same REPL against Gemini instead of Ollama.
+
+Mid-session, type `/joamodel` to switch models without restarting: it lists
+whatever Ollama models are actually installed (`ollama pull`ed) plus
+`gemini` as a last option, then swaps the active chat client to whichever
+number you pick. Picking `gemini` without `GEMINI_API_KEY` set just warns
+and leaves the current model in place instead of switching to something
+that would immediately fail.

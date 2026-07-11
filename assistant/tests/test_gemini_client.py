@@ -1,4 +1,6 @@
-from assistant.llm.gemini_client import _to_gemini_contents
+import pytest
+
+from assistant.llm.gemini_client import GeminiClient, GeminiError, _to_gemini_contents
 
 
 def test_translates_user_and_assistant_roles():
@@ -29,3 +31,8 @@ def test_joins_multiple_system_messages():
         {"role": "user", "content": "hi"},
     ])
     assert system_instruction == {"parts": [{"text": "First.\n\nSecond."}]}
+
+
+def test_missing_api_key_raises_without_request():
+    with pytest.raises(GeminiError, match="GEMINI_API_KEY"):
+        GeminiClient(api_key="")

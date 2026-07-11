@@ -135,5 +135,10 @@ def _extract_text(data: dict, allow_empty: bool = False) -> str:
         if allow_empty:
             return ""
         raise GeminiError(f"Gemini response had no candidates: {data}")
-    parts = candidates[0].get("content", {}).get("parts", [])
-    return "".join(p.get("text", "") for p in parts)
+    candidate = candidates[0]
+    parts = candidate.get("content", {}).get("parts", [])
+    text = "".join(p.get("text", "") for p in parts)
+    finish_reason = candidate.get("finishReason")
+    if not text and finish_reason not in (None, "STOP", "MAX_TOKENS"):
+        raise GeminiError(f"Gemini stopped without output: {finish_reason}")
+    return text

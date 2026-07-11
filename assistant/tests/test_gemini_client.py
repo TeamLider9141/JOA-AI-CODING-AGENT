@@ -188,3 +188,33 @@ def test_chat_stream_raises_on_safety_block():
     with pytest.raises(GeminiError, match="blocked"):
         list(make_client(handler).chat_stream(
             [{"role": "user", "content": "hi"}]))
+
+
+def test_chat_raises_on_finish_reason_safety():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={
+            "candidates": [{"finishReason": "SAFETY", "content": {}}]
+        })
+
+    with pytest.raises(GeminiError, match="SAFETY"):
+        make_client(handler).chat([{"role": "user", "content": "hi"}])
+
+
+def test_chat_stream_raises_on_finish_reason_safety():
+    body = 'data: {"candidates":[{"finishReason":"SAFETY","content":{}}]}\n\n'
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=body)
+
+    with pytest.raises(GeminiError, match="SAFETY"):
+        list(make_client(handler).chat_stream(
+            [{"role": "user", "content": "hi"}]))
+
+
+def test_chat_stream_connect_error_becomes_actionable_gemini_error():
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("refused")
+
+    with pytest.raises(GeminiError, match="unreachable"):
+        list(make_client(handler).chat_stream(
+            [{"role": "user", "content": "hi"}]))

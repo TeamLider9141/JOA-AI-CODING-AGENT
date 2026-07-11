@@ -1,4 +1,5 @@
 import time
+from enum import Enum
 from pathlib import Path
 
 import typer
@@ -10,11 +11,17 @@ from assistant.llm.gemini_client import GeminiClient, GeminiError
 from assistant.agent.runner import AgentSession, run_agent
 from assistant.agent.tools import ToolContext
 
+
+class Backend(str, Enum):
+    ollama = "ollama"
+    gemini = "gemini"
+
+
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 
 
-def _chat_client(backend: str):
-    if backend == "gemini":
+def _chat_client(backend: Backend):
+    if backend == Backend.gemini:
         return GeminiClient()
     return OllamaClient()
 
@@ -75,8 +82,9 @@ def search(
 def ask(
     question: str,
     repo: Path = typer.Option(..., "--repo", exists=True, file_okay=False),
-    backend: str = typer.Option(
-        "ollama", "--backend", help="ollama | gemini"),
+    backend: Backend = typer.Option(
+        Backend.ollama, "--backend",
+        help="ollama | gemini (gemini needs GEMINI_API_KEY in .env)"),
 ):
     """Ask a question about the indexed repository."""
     data_dir = _data_dir(repo)
@@ -107,8 +115,9 @@ def ask(
 def agent(
     task: str,
     repo: Path = typer.Option(..., "--repo", exists=True, file_okay=False),
-    backend: str = typer.Option(
-        "ollama", "--backend", help="ollama | gemini"),
+    backend: Backend = typer.Option(
+        Backend.ollama, "--backend",
+        help="ollama | gemini (gemini needs GEMINI_API_KEY in .env)"),
 ):
     """Run the coding agent: plan, call tools, and act on the repo."""
     data_dir = _data_dir(repo)
@@ -162,8 +171,9 @@ def _repl_loop(session, read_line, echo) -> None:
 def repl(
     repo: Path = typer.Option(Path("."), "--repo", exists=True,
                               file_okay=False),
-    backend: str = typer.Option(
-        "ollama", "--backend", help="ollama | gemini"),
+    backend: Backend = typer.Option(
+        Backend.ollama, "--backend",
+        help="ollama | gemini (gemini needs GEMINI_API_KEY in .env)"),
 ):
     """Interactive agent session over the repo (defaults to current dir)."""
     data_dir = _data_dir(repo)

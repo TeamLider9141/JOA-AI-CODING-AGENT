@@ -221,3 +221,35 @@ def test_joamodel_list_models_failure_keeps_current_client():
     _repl_loop(session, lambda: next(lines), out.append, BoomEmbedClient())
     assert session.client == "initial"
     assert any("down" in o for o in out)
+
+
+def test_repl_loop_gemini_error_suggests_joamodel():
+    class BoomSession:
+        def __init__(self):
+            self.sent = []
+
+        def send(self, task):
+            self.sent.append(task)
+            raise GeminiError("rate limited")
+
+    session = BoomSession()
+    lines = iter(["try this", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, None)
+    assert any("/joamodel" in o for o in out)
+
+
+def test_repl_loop_ollama_error_does_not_suggest_joamodel():
+    class BoomSession:
+        def __init__(self):
+            self.sent = []
+
+        def send(self, task):
+            self.sent.append(task)
+            raise OllamaError("ollama is down")
+
+    session = BoomSession()
+    lines = iter(["try this", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, None)
+    assert not any("/joamodel" in o for o in out)

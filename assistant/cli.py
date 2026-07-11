@@ -212,6 +212,8 @@ def _repl_loop(session, read_line, echo, embed_client) -> None:
             answer = session.send(stripped)
         except (OllamaError, GeminiError) as exc:
             echo(str(exc))
+            if isinstance(exc, GeminiError):
+                echo("/joamodel bilan Ollama modeliga qayting.")
             continue
         elapsed = time.perf_counter() - start
         echo(f"{answer}\n({elapsed:.1f}s)")

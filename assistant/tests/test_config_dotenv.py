@@ -4,6 +4,7 @@ from assistant.config import _load_dotenv
 
 
 def test_load_dotenv_sets_unset_vars(tmp_path, monkeypatch):
+    monkeypatch.setattr(os, "environ", os.environ.copy())
     monkeypatch.delenv("SOME_TEST_VAR", raising=False)
     env_file = tmp_path / ".env"
     env_file.write_text("SOME_TEST_VAR=hello\n# a comment\n\nOTHER=world\n")
@@ -15,6 +16,7 @@ def test_load_dotenv_sets_unset_vars(tmp_path, monkeypatch):
 
 
 def test_load_dotenv_does_not_override_real_env(tmp_path, monkeypatch):
+    monkeypatch.setattr(os, "environ", os.environ.copy())
     monkeypatch.setenv("SOME_TEST_VAR", "real-value")
     env_file = tmp_path / ".env"
     env_file.write_text("SOME_TEST_VAR=from-dotenv\n")

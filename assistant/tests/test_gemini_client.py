@@ -51,7 +51,7 @@ def make_client(handler) -> GeminiClient:
 
 def test_chat_posts_translated_contents_and_returns_text():
     def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.path == "/v1beta/models/gemini-3-flash:generateContent"
+        assert request.url.path == "/v1beta/models/gemini-flash-latest:generateContent"
         assert request.headers["x-goog-api-key"] == "test-key"
         body = json.loads(request.content)
         assert body["contents"] == [
@@ -142,7 +142,7 @@ def test_chat_stream_concatenates_sse_chunks():
 
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path == \
-            "/v1beta/models/gemini-3-flash:streamGenerateContent"
+            "/v1beta/models/gemini-flash-latest:streamGenerateContent"
         assert request.url.params["alt"] == "sse"
         return httpx.Response(200, text=body)
 

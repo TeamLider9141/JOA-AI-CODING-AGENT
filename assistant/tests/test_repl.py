@@ -5,6 +5,7 @@ from typer.testing import CliRunner
 
 from assistant.cli import app, _repl_loop
 from assistant.llm.ollama_client import OllamaClient, OllamaError
+from assistant.llm.gemini_client import GeminiClient, GeminiError
 
 runner = CliRunner()
 
@@ -144,3 +145,28 @@ def test_joamodel_unicode_digit_does_not_crash():
     _repl_loop(session, lambda: next(lines), out.append, embed_client)
     assert session.client == "initial"
     assert any("Noto'g'ri tanlov" in o for o in out)
+
+
+def test_joamodel_switches_to_gemini_when_key_present(monkeypatch):
+    monkeypatch.setattr("assistant.cli.config.GEMINI_API_KEY", "test-key")
+    session = FakeSession([])
+    session.client = "initial"
+    embed_client = FakeEmbedClient(["qwen2.5-coder:1.5b"])
+    lines = iter(["/joamodel", "2", "exit"])  # 1=qwen..1.5b, 2=gemini
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, embed_client)
+    assert isinstance(session.client, GeminiClient)
+    assert any("Model: gemini" in o for o in out)
+
+
+def test_joamodel_gemini_without_key_warns_and_keeps_current_client(
+        monkeypatch):
+    monkeypatch.setattr("assistant.cli.config.GEMINI_API_KEY", None)
+    session = FakeSession([])
+    session.client = "initial"
+    embed_client = FakeEmbedClient([])
+    lines = iter(["/joamodel", "1", "exit"])  # only option is "gemini"
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, embed_client)
+    assert session.client == "initial"
+    assert any("GEMINI_API_KEY" in o for o in out)

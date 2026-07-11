@@ -84,10 +84,17 @@ def _http_error(resp: httpx.Response) -> GeminiError:
             "Gemini rate limit hit (429). Try --backend ollama or wait "
             "and retry."
         )
+    if resp.status_code == 404:
+        return GeminiError(
+            f"Gemini API returned 404 (model not found). config.GEMINI_MODEL "
+            f"may be stale — check available models at "
+            f"https://generativelanguage.googleapis.com/v1beta/models and "
+            f"update it if needed. Response: {resp.text}"
+        )
     if resp.status_code in (400, 401, 403):
         return GeminiError(
             f"Gemini rejected the request ({resp.status_code}): "
-            f"{resp.text}. Check GEMINI_API_KEY."
+            f"{resp.text}. Check GEMINI_API_KEY or the request payload."
         )
     return GeminiError(f"Gemini API returned {resp.status_code}: {resp.text}")
 

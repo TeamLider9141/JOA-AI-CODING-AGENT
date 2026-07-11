@@ -82,3 +82,11 @@ def test_chat_sends_system_instruction_separately():
         {"role": "system", "content": "Be terse."},
         {"role": "user", "content": "hi"},
     ])
+
+
+def test_404_raises_model_hint():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404, text='{"error": "model not found"}')
+
+    with pytest.raises(GeminiError, match="GEMINI_MODEL"):
+        make_client(handler).chat([{"role": "user", "content": "hi"}])

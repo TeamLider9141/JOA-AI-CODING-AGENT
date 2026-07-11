@@ -170,3 +170,54 @@ def test_joamodel_gemini_without_key_warns_and_keeps_current_client(
     _repl_loop(session, lambda: next(lines), out.append, embed_client)
     assert session.client == "initial"
     assert any("GEMINI_API_KEY" in o for o in out)
+
+
+def test_joamodel_invalid_number_keeps_current_client():
+    session = FakeSession([])
+    session.client = "initial"
+    embed_client = FakeEmbedClient(["qwen2.5-coder:1.5b"])
+    lines = iter(["/joamodel", "99", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, embed_client)
+    assert session.client == "initial"
+    assert any("Noto'g'ri tanlov" in o for o in out)
+
+
+def test_joamodel_non_numeric_choice_keeps_current_client():
+    session = FakeSession([])
+    session.client = "initial"
+    embed_client = FakeEmbedClient(["qwen2.5-coder:1.5b"])
+    lines = iter(["/joamodel", "abc", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, embed_client)
+    assert session.client == "initial"
+
+
+def test_joamodel_eof_during_selection_does_not_crash():
+    session = FakeSession([])
+    session.client = "initial"
+    embed_client = FakeEmbedClient(["qwen2.5-coder:1.5b"])
+    calls = iter(["/joamodel"])
+
+    def read_line():
+        try:
+            return next(calls)
+        except StopIteration:
+            raise EOFError
+
+    _repl_loop(session, read_line, lambda _o: None, embed_client)
+    assert session.client == "initial"
+
+
+def test_joamodel_list_models_failure_keeps_current_client():
+    class BoomEmbedClient:
+        def list_models(self):
+            raise OllamaError("ollama is down")
+
+    session = FakeSession([])
+    session.client = "initial"
+    lines = iter(["/joamodel", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, BoomEmbedClient())
+    assert session.client == "initial"
+    assert any("down" in o for o in out)

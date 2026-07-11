@@ -90,3 +90,43 @@ def test_404_raises_model_hint():
 
     with pytest.raises(GeminiError, match="GEMINI_MODEL"):
         make_client(handler).chat([{"role": "user", "content": "hi"}])
+
+
+def test_401_raises_key_hint():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(401, text='{"error": "bad auth"}')
+
+    with pytest.raises(GeminiError, match="GEMINI_API_KEY"):
+        make_client(handler).chat([{"role": "user", "content": "hi"}])
+
+
+def test_403_raises_key_hint():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(403, text='{"error": "permission denied"}')
+
+    with pytest.raises(GeminiError, match="GEMINI_API_KEY"):
+        make_client(handler).chat([{"role": "user", "content": "hi"}])
+
+
+def test_429_raises_rate_limit_hint():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(429, text='{"error": "quota exceeded"}')
+
+    with pytest.raises(GeminiError, match="rate limit"):
+        make_client(handler).chat([{"role": "user", "content": "hi"}])
+
+
+def test_connect_error_becomes_actionable_gemini_error():
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("refused")
+
+    with pytest.raises(GeminiError, match="unreachable"):
+        make_client(handler).chat([{"role": "user", "content": "hi"}])
+
+
+def test_empty_candidates_raises():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"candidates": []})
+
+    with pytest.raises(GeminiError, match="no candidates"):
+        make_client(handler).chat([{"role": "user", "content": "hi"}])

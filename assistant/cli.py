@@ -158,21 +158,29 @@ def _handle_joamodel(session, embed_client, read_line, echo) -> None:
     except EOFError:
         return
     choice = choice_line.strip()
-    if not choice.isdigit() or not (1 <= int(choice) <= len(options)):
+    try:
+        index = int(choice)
+    except ValueError:
         echo(f"Noto'g'ri tanlov: {choice!r}")
         return
-    selected = options[int(choice) - 1]
+    if not (1 <= index <= len(options)):
+        echo(f"Noto'g'ri tanlov: {choice!r}")
+        return
+    selected = options[index - 1]
     if selected == "gemini":
         if not config.GEMINI_API_KEY:
             echo("GEMINI_API_KEY .env'da topilmadi. Model o'zgartirilmadi.")
             return
         try:
-            session.client = GeminiClient()
+            new_client = GeminiClient()
         except GeminiError as exc:
             echo(str(exc))
             return
     else:
-        session.client = OllamaClient(model=selected)
+        new_client = OllamaClient(model=selected)
+    if hasattr(session.client, "close"):
+        session.client.close()
+    session.client = new_client
     echo(f"✓ Model: {selected}")
 
 

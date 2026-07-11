@@ -115,3 +115,32 @@ def test_joamodel_lists_and_switches_to_chosen_ollama_model():
     assert session.client._model == "qwen2.5-coder:3b"
     assert any("2. qwen2.5-coder:3b" in o for o in out)
     assert any("3. gemini" in o for o in out)
+
+
+def test_joamodel_closes_previous_client_on_switch():
+    class FakeClosableClient:
+        def __init__(self):
+            self.closed = False
+
+        def close(self):
+            self.closed = True
+
+    session = FakeSession([])
+    old_client = FakeClosableClient()
+    session.client = old_client
+    embed_client = FakeEmbedClient(["qwen2.5-coder:1.5b"])
+    lines = iter(["/joamodel", "1", "exit"])
+    _repl_loop(session, lambda: next(lines), lambda _o: None, embed_client)
+    assert old_client.closed is True
+    assert session.client is not old_client
+
+
+def test_joamodel_unicode_digit_does_not_crash():
+    session = FakeSession([])
+    session.client = "initial"
+    embed_client = FakeEmbedClient(["qwen2.5-coder:1.5b"])
+    lines = iter(["/joamodel", "³", "exit"])  # superscript 3
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, embed_client)
+    assert session.client == "initial"
+    assert any("Noto'g'ri tanlov" in o for o in out)

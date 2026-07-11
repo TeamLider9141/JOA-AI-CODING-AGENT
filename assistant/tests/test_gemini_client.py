@@ -218,3 +218,9 @@ def test_chat_stream_connect_error_becomes_actionable_gemini_error():
     with pytest.raises(GeminiError, match="unreachable"):
         list(make_client(handler).chat_stream(
             [{"role": "user", "content": "hi"}]))
+
+
+def test_close_closes_underlying_http_client():
+    client = make_client(lambda r: httpx.Response(200))
+    client.close()
+    assert client._client.is_closed

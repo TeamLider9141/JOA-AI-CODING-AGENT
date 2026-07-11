@@ -82,3 +82,10 @@ def test_list_models_connect_error_is_actionable():
 
     with pytest.raises(OllamaError, match="ollama serve"):
         make_client(handler).list_models()
+
+
+def test_close_closes_underlying_http_client():
+    client = OllamaClient(base_url="http://test",
+                          transport=httpx.MockTransport(lambda r: httpx.Response(200)))
+    client.close()
+    assert client._client.is_closed

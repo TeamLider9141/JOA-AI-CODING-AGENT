@@ -51,6 +51,9 @@ class OllamaClient:
         data = resp.json()
         return sorted(m["name"] for m in data.get("models", []))
 
+    def close(self) -> None:
+        self._client.close()
+
     def chat(self, messages: list[dict]) -> str:
         data = self._post("/api/chat", {
             "model": self._model,

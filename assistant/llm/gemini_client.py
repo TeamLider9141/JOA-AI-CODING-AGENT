@@ -104,6 +104,9 @@ class GeminiClient:
             raise _http_error(resp)
         return resp.json()
 
+    def close(self) -> None:
+        self._client.close()
+
 
 def _http_error(resp: httpx.Response) -> GeminiError:
     if resp.status_code == 429:

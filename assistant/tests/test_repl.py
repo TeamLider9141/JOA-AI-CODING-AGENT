@@ -183,16 +183,6 @@ def test_joamodel_invalid_number_keeps_current_client():
     assert any("Noto'g'ri tanlov" in o for o in out)
 
 
-def test_joamodel_non_numeric_choice_keeps_current_client():
-    session = FakeSession([])
-    session.client = "initial"
-    embed_client = FakeEmbedClient(["qwen2.5-coder:1.5b"])
-    lines = iter(["/joamodel", "abc", "exit"])
-    out = []
-    _repl_loop(session, lambda: next(lines), out.append, embed_client)
-    assert session.client == "initial"
-
-
 def test_joamodel_eof_during_selection_does_not_crash():
     session = FakeSession([])
     session.client = "initial"

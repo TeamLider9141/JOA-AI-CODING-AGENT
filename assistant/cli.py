@@ -6,10 +6,18 @@ import typer
 from assistant import config
 from assistant.indexer.pipeline import build_index, search_index
 from assistant.llm.ollama_client import OllamaClient, OllamaError
+from assistant.llm.gemini_client import GeminiClient, GeminiError
 from assistant.agent.runner import AgentSession, run_agent
 from assistant.agent.tools import ToolContext
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
+
+
+def _chat_client(backend: str):
+    if backend == "gemini":
+        return GeminiClient()
+    return OllamaClient()
+
 
 SYSTEM_PROMPT = (
     "You are a coding assistant. Answer the question using ONLY the provided "
@@ -67,13 +75,16 @@ def search(
 def ask(
     question: str,
     repo: Path = typer.Option(..., "--repo", exists=True, file_okay=False),
+    backend: str = typer.Option(
+        "ollama", "--backend", help="ollama | gemini"),
 ):
     """Ask a question about the indexed repository."""
     data_dir = _data_dir(repo)
     _require_index(data_dir)
-    client = OllamaClient()
+    embed_client = OllamaClient()
     try:
-        results = search_index(question, data_dir, client.embed)
+        chat_client = _chat_client(backend)
+        results = search_index(question, data_dir, embed_client.embed)
         typer.echo("--- sources ---")
         for _chunk_id, _score, p in results:
             typer.echo(
@@ -84,10 +95,10 @@ def ask(
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": build_prompt(question, results)},
         ]
-        for token in client.chat_stream(messages):
+        for token in chat_client.chat_stream(messages):
             typer.echo(token, nl=False)
         typer.echo()
-    except OllamaError as exc:
+    except (OllamaError, GeminiError) as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(1)
 
@@ -96,20 +107,23 @@ def ask(
 def agent(
     task: str,
     repo: Path = typer.Option(..., "--repo", exists=True, file_okay=False),
+    backend: str = typer.Option(
+        "ollama", "--backend", help="ollama | gemini"),
 ):
     """Run the coding agent: plan, call tools, and act on the repo."""
     data_dir = _data_dir(repo)
     _require_index(data_dir)
-    client = OllamaClient()
-    ctx = ToolContext(
-        root=repo.resolve(),
-        data_dir=data_dir,
-        embedder=client.embed,
-        confirm=lambda msg: typer.confirm(msg),
-    )
+    embed_client = OllamaClient()
     try:
-        answer = run_agent(task, ctx, client)
-    except OllamaError as exc:
+        chat_client = _chat_client(backend)
+        ctx = ToolContext(
+            root=repo.resolve(),
+            data_dir=data_dir,
+            embedder=embed_client.embed,
+            confirm=lambda msg: typer.confirm(msg),
+        )
+        answer = run_agent(task, ctx, chat_client)
+    except (OllamaError, GeminiError) as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(1)
     typer.echo("--- answer ---")
@@ -137,7 +151,7 @@ def _repl_loop(session, read_line, echo) -> None:
         start = time.perf_counter()
         try:
             answer = session.send(stripped)
-        except OllamaError as exc:
+        except (OllamaError, GeminiError) as exc:
             echo(str(exc))
             continue
         elapsed = time.perf_counter() - start
@@ -148,18 +162,25 @@ def _repl_loop(session, read_line, echo) -> None:
 def repl(
     repo: Path = typer.Option(Path("."), "--repo", exists=True,
                               file_okay=False),
+    backend: str = typer.Option(
+        "ollama", "--backend", help="ollama | gemini"),
 ):
     """Interactive agent session over the repo (defaults to current dir)."""
     data_dir = _data_dir(repo)
     _require_index(data_dir)
-    client = OllamaClient()
+    embed_client = OllamaClient()
+    try:
+        chat_client = _chat_client(backend)
+    except (OllamaError, GeminiError) as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1)
     ctx = ToolContext(
         root=repo.resolve(),
         data_dir=data_dir,
-        embedder=client.embed,
+        embedder=embed_client.embed,
         confirm=lambda msg: typer.confirm(msg),
     )
-    session = AgentSession(ctx, client)
+    session = AgentSession(ctx, chat_client)
     _repl_loop(session, lambda: input("joa> "), typer.echo)
 
 

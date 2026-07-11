@@ -86,7 +86,7 @@ class GeminiClient:
                 for line in resp.iter_lines():
                     if not line.startswith("data: "):
                         continue
-                    chunk = json.loads(line[len("data: "):])
+                    chunk = json.loads(line.removeprefix("data: "))
                     text = _extract_text(chunk, allow_empty=True)
                     if text:
                         yield text
@@ -129,6 +129,9 @@ def _http_error(resp: httpx.Response) -> GeminiError:
 def _extract_text(data: dict, allow_empty: bool = False) -> str:
     candidates = data.get("candidates") or []
     if not candidates:
+        block_reason = data.get("promptFeedback", {}).get("blockReason")
+        if block_reason:
+            raise GeminiError(f"Gemini blocked the request: {block_reason}")
         if allow_empty:
             return ""
         raise GeminiError(f"Gemini response had no candidates: {data}")

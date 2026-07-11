@@ -174,3 +174,17 @@ def test_chat_stream_raises_on_http_error():
     with pytest.raises(GeminiError, match="rate limit"):
         list(make_client(handler).chat_stream(
             [{"role": "user", "content": "hi"}]))
+
+
+def test_chat_stream_raises_on_safety_block():
+    body = (
+        'data: {"promptFeedback": {"blockReason": "SAFETY"}}\n'
+        "\n"
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=body)
+
+    with pytest.raises(GeminiError, match="blocked"):
+        list(make_client(handler).chat_stream(
+            [{"role": "user", "content": "hi"}]))

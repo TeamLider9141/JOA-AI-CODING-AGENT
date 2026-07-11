@@ -130,3 +130,47 @@ def test_empty_candidates_raises():
 
     with pytest.raises(GeminiError, match="no candidates"):
         make_client(handler).chat([{"role": "user", "content": "hi"}])
+
+
+def test_chat_stream_concatenates_sse_chunks():
+    body = (
+        'data: {"candidates":[{"content":{"parts":[{"text":"Hel"}]}}]}\n'
+        "\n"
+        'data: {"candidates":[{"content":{"parts":[{"text":"lo"}]}}]}\n'
+        "\n"
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == \
+            "/v1beta/models/gemini-3-flash:streamGenerateContent"
+        assert request.url.params["alt"] == "sse"
+        return httpx.Response(200, text=body)
+
+    out = "".join(make_client(handler).chat_stream(
+        [{"role": "user", "content": "hi"}]))
+    assert out == "Hello"
+
+
+def test_chat_stream_skips_metadata_only_chunks():
+    body = (
+        'data: {"candidates":[{"content":{"parts":[{"text":"Hi"}]}}]}\n'
+        "\n"
+        'data: {"usageMetadata": {"totalTokenCount": 5}}\n'
+        "\n"
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=body)
+
+    out = "".join(make_client(handler).chat_stream(
+        [{"role": "user", "content": "hi"}]))
+    assert out == "Hi"
+
+
+def test_chat_stream_raises_on_http_error():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(429, text='{"error": "quota exceeded"}')
+
+    with pytest.raises(GeminiError, match="rate limit"):
+        list(make_client(handler).chat_stream(
+            [{"role": "user", "content": "hi"}]))

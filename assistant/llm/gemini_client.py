@@ -1,3 +1,6 @@
+import json
+from collections.abc import Iterator
+
 import httpx
 
 from assistant import config
@@ -66,6 +69,30 @@ class GeminiClient:
         data = self._post(
             f"/v1beta/models/{self._model}:generateContent", payload)
         return _extract_text(data)
+
+    def chat_stream(self, messages: list[dict]) -> Iterator[str]:
+        contents, system_instruction = _to_gemini_contents(messages)
+        payload = {"contents": contents}
+        if system_instruction:
+            payload["systemInstruction"] = system_instruction
+        path = f"/v1beta/models/{self._model}:streamGenerateContent"
+        try:
+            with self._client.stream(
+                "POST", path, json=payload, params={"alt": "sse"}
+            ) as resp:
+                if resp.status_code >= 400:
+                    resp.read()
+                    raise _http_error(resp)
+                for line in resp.iter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    chunk = json.loads(line[len("data: "):])
+                    text = _extract_text(chunk, allow_empty=True)
+                    if text:
+                        yield text
+        except httpx.ConnectError as exc:
+            raise GeminiError(
+                UNREACHABLE_MSG.format(url=self._base_url)) from exc
 
     def _post(self, path: str, payload: dict) -> dict:
         try:

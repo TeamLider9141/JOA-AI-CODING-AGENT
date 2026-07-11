@@ -139,12 +139,51 @@ def agent(
     typer.echo(answer)
 
 
-def _repl_loop(session, read_line, echo) -> None:
+def _handle_joamodel(session, embed_client, read_line, echo) -> None:
+    """List installed Ollama models plus "gemini"; switch session.client
+    to whichever the user picks by number. Leaves session.client
+    unchanged on any failure (bad input, EOF, missing Gemini key, or a
+    failure listing Ollama's models)."""
+    try:
+        models = embed_client.list_models()
+    except OllamaError as exc:
+        echo(str(exc))
+        return
+    options = models + ["gemini"]
+    for i, name in enumerate(options, start=1):
+        echo(f"{i}. {name}")
+    echo("Raqamni tanlang:")
+    try:
+        choice_line = read_line()
+    except EOFError:
+        return
+    choice = choice_line.strip()
+    if not choice.isdigit() or not (1 <= int(choice) <= len(options)):
+        echo(f"Noto'g'ri tanlov: {choice!r}")
+        return
+    selected = options[int(choice) - 1]
+    if selected == "gemini":
+        if not config.GEMINI_API_KEY:
+            echo("GEMINI_API_KEY .env'da topilmadi. Model o'zgartirilmadi.")
+            return
+        try:
+            session.client = GeminiClient()
+        except GeminiError as exc:
+            echo(str(exc))
+            return
+    else:
+        session.client = OllamaClient(model=selected)
+    echo(f"✓ Model: {selected}")
+
+
+def _repl_loop(session, read_line, echo, embed_client) -> None:
     """Drive an AgentSession from a line source until exit/EOF.
 
     `read_line()` returns the next input line (raising EOFError at end of
-    input); `echo(text)` prints a line. Kept separate from the CLI command so
-    the loop is testable without a live model.
+    input); `echo(text)` prints a line. `embed_client` is an OllamaClient
+    used only for `/joamodel`'s model listing (embeddings always stay on
+    Ollama regardless of which chat backend is active). Kept separate from
+    the CLI command so the loop is testable without a live model.
     """
     echo("joa session — type 'exit' or Ctrl-D to quit")
     while True:
@@ -156,6 +195,9 @@ def _repl_loop(session, read_line, echo) -> None:
         if stripped in ("exit", "quit"):
             return
         if not stripped:
+            continue
+        if stripped == "/joamodel":
+            _handle_joamodel(session, embed_client, read_line, echo)
             continue
         start = time.perf_counter()
         try:
@@ -191,7 +233,7 @@ def repl(
         confirm=lambda msg: typer.confirm(msg),
     )
     session = AgentSession(ctx, chat_client)
-    _repl_loop(session, lambda: input("joa> "), typer.echo)
+    _repl_loop(session, lambda: input("joa> "), typer.echo, embed_client)
 
 
 def build_prompt(question: str,

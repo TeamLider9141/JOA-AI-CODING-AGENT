@@ -35,6 +35,22 @@ class OllamaClient:
                           {"model": config.EMBED_MODEL, "input": texts})
         return data["embeddings"]
 
+    def list_models(self) -> list[str]:
+        """Names of models currently pulled into this Ollama instance."""
+        try:
+            resp = self._client.get("/api/tags")
+            resp.raise_for_status()
+        except httpx.ConnectError as exc:
+            raise OllamaError(
+                UNREACHABLE_MSG.format(url=self._base_url)) from exc
+        except httpx.HTTPStatusError as exc:
+            raise OllamaError(
+                f"Ollama returned {exc.response.status_code}: "
+                f"{exc.response.text}"
+            ) from exc
+        data = resp.json()
+        return sorted(m["name"] for m in data.get("models", []))
+
     def chat(self, messages: list[dict]) -> str:
         data = self._post("/api/chat", {
             "model": self._model,

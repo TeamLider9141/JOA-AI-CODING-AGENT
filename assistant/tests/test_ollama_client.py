@@ -62,3 +62,23 @@ def test_chat_uses_overridden_model():
     client = OllamaClient(base_url="http://test", model="qwen2.5-coder:1.5b",
                           transport=httpx.MockTransport(handler))
     assert client.chat([{"role": "user", "content": "hi"}]) == "hi"
+
+
+def test_list_models_returns_sorted_names():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/tags"
+        return httpx.Response(200, json={"models": [
+            {"name": "qwen2.5-coder:7b"},
+            {"name": "qwen2.5-coder:1.5b"},
+        ]})
+
+    assert make_client(handler).list_models() == [
+        "qwen2.5-coder:1.5b", "qwen2.5-coder:7b"]
+
+
+def test_list_models_connect_error_is_actionable():
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("refused")
+
+    with pytest.raises(OllamaError, match="ollama serve"):
+        make_client(handler).list_models()

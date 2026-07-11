@@ -57,3 +57,46 @@ class GeminiClient:
             transport=transport,
             headers={"x-goog-api-key": api_key},
         )
+
+    def chat(self, messages: list[dict]) -> str:
+        contents, system_instruction = _to_gemini_contents(messages)
+        payload = {"contents": contents}
+        if system_instruction:
+            payload["systemInstruction"] = system_instruction
+        data = self._post(
+            f"/v1beta/models/{self._model}:generateContent", payload)
+        return _extract_text(data)
+
+    def _post(self, path: str, payload: dict) -> dict:
+        try:
+            resp = self._client.post(path, json=payload)
+        except httpx.ConnectError as exc:
+            raise GeminiError(
+                UNREACHABLE_MSG.format(url=self._base_url)) from exc
+        if resp.status_code >= 400:
+            raise _http_error(resp)
+        return resp.json()
+
+
+def _http_error(resp: httpx.Response) -> GeminiError:
+    if resp.status_code == 429:
+        return GeminiError(
+            "Gemini rate limit hit (429). Try --backend ollama or wait "
+            "and retry."
+        )
+    if resp.status_code in (400, 401, 403):
+        return GeminiError(
+            f"Gemini rejected the request ({resp.status_code}): "
+            f"{resp.text}. Check GEMINI_API_KEY."
+        )
+    return GeminiError(f"Gemini API returned {resp.status_code}: {resp.text}")
+
+
+def _extract_text(data: dict, allow_empty: bool = False) -> str:
+    candidates = data.get("candidates") or []
+    if not candidates:
+        if allow_empty:
+            return ""
+        raise GeminiError(f"Gemini response had no candidates: {data}")
+    parts = candidates[0].get("content", {}).get("parts", [])
+    return "".join(p.get("text", "") for p in parts)

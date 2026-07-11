@@ -1,7 +1,9 @@
 # Local Coding Assistant — Retrieval Core
 
 CPU-only coding assistant core: tree-sitter AST chunking, embedded Qdrant +
-BM25 hybrid retrieval (RRF), Ollama for embeddings and chat.
+BM25 hybrid retrieval (RRF), Ollama for embeddings and chat. Chat can
+optionally run against Gemini instead of Ollama via `--backend gemini` —
+embeddings always stay on Ollama regardless of chat backend.
 
 ## Setup
 
@@ -10,11 +12,21 @@ BM25 hybrid retrieval (RRF), Ollama for embeddings and chat.
     ollama pull qwen2.5-coder:7b
     ollama pull nomic-embed-text
 
+Optional — to use `--backend gemini`:
+
+    cp .env.example .env
+    # add GEMINI_API_KEY to .env (get one at https://aistudio.google.com/apikey)
+
 ## Usage
 
     .venv/bin/python -m assistant.cli index <repo-path>
     .venv/bin/python -m assistant.cli search "query" --repo <repo-path>
     .venv/bin/python -m assistant.cli ask "question" --repo <repo-path>
+    .venv/bin/python -m assistant.cli ask "question" --repo <repo-path> --backend gemini
+
+`--backend` (`ollama` | `gemini`, default `ollama`) works on `ask`, `agent`,
+and `repl`. `index`/`search` have no `--backend` — they only ever embed, and
+embedding always uses Ollama's `nomic-embed-text`.
 
 ## Tests and eval
 
@@ -75,3 +87,4 @@ Each line is handled by the coding agent (read/write/run/search, with writes
 and commands confirmed), and the conversation carries across turns so
 follow-ups remember earlier context. `joa <args>` still works as a short form
 for the CLI, e.g. `joa ask "how does X work"` or `joa agent "fix the bug"`.
+`joa --backend gemini` opens the same REPL against Gemini instead of Ollama.

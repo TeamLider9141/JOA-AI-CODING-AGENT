@@ -10,6 +10,9 @@ export PYTHONPATH="$HERE${PYTHONPATH:+:$PYTHONPATH}"
 
 if [ "$#" -eq 0 ]; then
     exec "$PY" -m assistant.cli repl --repo "$(pwd)"
+elif [[ "$1" == -* ]]; then
+    # first arg is a flag (e.g. --backend gemini), not a subcommand — still repl
+    exec "$PY" -m assistant.cli repl --repo "$(pwd)" "$@"
 else
     exec "$PY" -m assistant.cli "$@"
 fi

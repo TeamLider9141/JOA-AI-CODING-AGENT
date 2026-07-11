@@ -1,7 +1,9 @@
 # Joa — Lokal AI Coding Agent
 
-CPU-only, to'liq offline ishlaydigan kod-yordamchi. Ollama orqali lokal LLM
-ishlatadi — cloud API'ga bog'liq emas, kod tashqariga chiqmaydi.
+CPU-only, offline-first kod-yordamchi. Default holatda Ollama orqali lokal
+LLM ishlatadi — cloud API'ga bog'liq emas, kod tashqariga chiqmaydi. Xohlasa,
+tezlik uchun `--backend gemini` bilan Google Gemini'ga ham o'tish mumkin
+(ixtiyoriy, cloud API key talab qiladi).
 
 ## Nima qiladi
 
@@ -16,16 +18,24 @@ ishlatadi — cloud API'ga bog'liq emas, kod tashqariga chiqmaydi.
 
 ## Texnologiyalar
 
-Python, Typer (CLI), Ollama (qwen2.5-coder:7b, nomic-embed-text),
-Qdrant, rank_bm25, tree-sitter, pytest (TDD, 96+ test)
+Python, Typer (CLI), Ollama (qwen2.5-coder, nomic-embed-text), Gemini API
+(ixtiyoriy ikkinchi chat backend), Qdrant, rank_bm25, tree-sitter, pytest
+(TDD, 120+ test)
 
 ## Setup
 
 ```
 python3 -m venv .venv
 .venv/bin/pip install -r assistant/requirements.txt
-ollama pull qwen2.5-coder:7b
+ollama pull qwen2.5-coder:7b       # yoki :3b / :1.5b — tezroq, CPU uchun yengilroq
 ollama pull nomic-embed-text
+```
+
+Gemini backend'ni ishlatmoqchi bo'lsangiz (ixtiyoriy):
+
+```
+cp .env.example .env
+# .env faylga GEMINI_API_KEY qo'shing (https://aistudio.google.com/apikey)
 ```
 
 ## Ishlatish
@@ -34,8 +44,14 @@ ollama pull nomic-embed-text
 .venv/bin/python -m assistant.cli index <repo-path>
 .venv/bin/python -m assistant.cli search "query" --repo <repo-path>
 .venv/bin/python -m assistant.cli ask "question" --repo <repo-path>
-bin/joa                                    # interaktiv REPL
+.venv/bin/python -m assistant.cli ask "question" --repo <repo-path> --backend gemini
+bin/joa                                    # interaktiv REPL (Ollama)
+bin/joa --backend gemini                   # interaktiv REPL (Gemini)
 ```
+
+`--backend` — `ask`, `agent`, `repl` buyruqlarida ishlaydi (`index`/`search`da
+yo'q, chunki ular faqat embedding ishlatadi — embedding doim Ollama'da
+qoladi, backend tanlovidan qat'i nazar). Default: `ollama`.
 
 ## Testlar
 

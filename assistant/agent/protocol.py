@@ -25,6 +25,10 @@ Rules:
   failed — read the error, fix the cause, and re-run to verify before moving on.
 - When the task is done, reply with the "final" action and put your answer
   in the "answer" field.
+- If the user's message is a plain question you can answer directly (no
+  file, command, or search needed), reply immediately with "final".
+  Do not write files or run commands just to produce an answer you
+  already know.
 """
 
 

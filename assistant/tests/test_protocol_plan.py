@@ -12,6 +12,13 @@ def test_system_prompt_mentions_exit_code_autofix():
     assert "exit code" in prompt.lower()
 
 
+def test_system_prompt_discourages_tools_for_plain_questions():
+    prompt = build_system_prompt()
+    normalized = " ".join(prompt.lower().split())
+    assert "final" in prompt
+    assert "do not write files or run commands" in normalized
+
+
 def test_plan_action_parses_like_any_other_action():
     action = parse_action(
         '{"action": "plan", "args": {"todo": ["a", "b"]}}')

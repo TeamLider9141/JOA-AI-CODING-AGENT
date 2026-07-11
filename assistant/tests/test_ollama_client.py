@@ -51,3 +51,14 @@ def test_missing_model_404_suggests_pull():
 
     with pytest.raises(OllamaError, match="ollama pull"):
         make_client(handler).embed(["x"])
+
+
+def test_chat_uses_overridden_model():
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        assert body["model"] == "qwen2.5-coder:1.5b"
+        return httpx.Response(200, json={"message": {"content": "hi"}})
+
+    client = OllamaClient(base_url="http://test", model="qwen2.5-coder:1.5b",
+                          transport=httpx.MockTransport(handler))
+    assert client.chat([{"role": "user", "content": "hi"}]) == "hi"

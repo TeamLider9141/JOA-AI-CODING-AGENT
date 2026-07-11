@@ -19,9 +19,11 @@ class OllamaClient:
     def __init__(
         self,
         base_url: str = config.OLLAMA_URL,
+        model: str = config.CHAT_MODEL,
         transport: httpx.BaseTransport | None = None,
     ):
         self._base_url = base_url
+        self._model = model
         self._client = httpx.Client(
             base_url=base_url,
             timeout=config.REQUEST_TIMEOUT,
@@ -35,7 +37,7 @@ class OllamaClient:
 
     def chat(self, messages: list[dict]) -> str:
         data = self._post("/api/chat", {
-            "model": config.CHAT_MODEL,
+            "model": self._model,
             "messages": messages,
             "stream": False,
             "options": {"num_ctx": config.NUM_CTX},
@@ -44,7 +46,7 @@ class OllamaClient:
 
     def chat_stream(self, messages: list[dict]) -> Iterator[str]:
         payload = {
-            "model": config.CHAT_MODEL,
+            "model": self._model,
             "messages": messages,
             "stream": True,
             "options": {"num_ctx": config.NUM_CTX},
@@ -54,7 +56,7 @@ class OllamaClient:
                 if resp.status_code >= 400:
                     raise OllamaError(
                         f"Ollama returned {resp.status_code} for /api/chat."
-                        f" Model missing? Try: ollama pull {config.CHAT_MODEL}"
+                        f" Model missing? Try: ollama pull {self._model}"
                     )
                 for line in resp.iter_lines():
                     if not line:

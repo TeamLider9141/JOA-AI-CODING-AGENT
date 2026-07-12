@@ -95,3 +95,10 @@ whatever Ollama models are actually installed (`ollama pull`ed) plus
 number you pick. Picking `gemini` without `GEMINI_API_KEY` set just warns
 and leaves the current model in place instead of switching to something
 that would immediately fail.
+
+Plain questions take a fast path: one direct streaming chat call (tokens
+render as they arrive) instead of the full agent protocol. The model
+routes automatically — if the request needs file/command/search tools it
+replies `ESCALATE` internally and the normal agent loop takes over.
+Session history is capped (`MAX_HISTORY_MESSAGES` in `config.py`) so long
+sessions don't slow down over time.

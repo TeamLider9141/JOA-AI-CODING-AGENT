@@ -67,6 +67,11 @@ joa> 1
 ✓ Model: qwen2.5-coder:1.5b
 ```
 
+Oddiy savollar (masalan "bu funksiya nima qiladi?") endi agent
+protokolisiz, bitta streaming chaqiruv bilan javob oladi — javob token
+oqib chiqadi. Fayl/buyruq talab qiladigan topshiriqlar avvalgidek to'liq
+agent orqali bajariladi (model o'zi ajratadi).
+
 ## Testlar
 
 ```

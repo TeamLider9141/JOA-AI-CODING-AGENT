@@ -74,7 +74,9 @@ agent orqali bajariladi (model o'zi ajratadi).
 
 Boshqa slash-buyruqlar: `/` yoki `/help` — buyruqlar ro'yxati, `/clear` —
 suhbat kontekstini tozalash (tarix 0 dan boshlanadi). `/` bilan boshlangan
-kiritishlar hech qachon LLM'ga yuborilmaydi.
+kiritishlar hech qachon LLM'ga yuborilmaydi. Terminalda `/` yozganingizda
+buyruqlar ro'yxati jonli dropdown sifatida chiqadi (yozgan sari
+filtrlanadi, Tab/strelka bilan tanlanadi).
 
 ## Testlar
 

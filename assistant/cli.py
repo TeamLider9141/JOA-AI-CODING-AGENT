@@ -1,8 +1,11 @@
+import sys
 import time
 from enum import Enum
 from pathlib import Path
 
 import typer
+from prompt_toolkit import PromptSession
+from prompt_toolkit.completion import Completer, Completion
 
 from assistant import config
 from assistant.indexer.pipeline import build_index, search_index
@@ -234,6 +237,20 @@ SLASH_COMMANDS = {
 }
 
 
+class SlashCompleter(Completer):
+    """Live dropdown of slash commands while typing — only when the line
+    starts with "/", so normal questions get no suggestion noise."""
+
+    def get_completions(self, document, complete_event):
+        text = document.text_before_cursor
+        if not text.startswith("/"):
+            return
+        for name, desc in SLASH_COMMANDS.items():
+            if name.startswith(text):
+                yield Completion(name, start_position=-len(text),
+                                 display_meta=desc)
+
+
 def _show_help(echo) -> None:
     echo("Buyruqlar:")
     for name, desc in SLASH_COMMANDS.items():
@@ -317,7 +334,15 @@ def repl(
         confirm=lambda msg: typer.confirm(msg),
     )
     session = AgentSession(ctx, chat_client)
-    _repl_loop(session, lambda: input("joa> "), typer.echo, embed_client,
+    if sys.stdin.isatty():
+        prompt_session = PromptSession(
+            "joa> ", completer=SlashCompleter(),
+            complete_while_typing=True)
+        read_line = prompt_session.prompt
+    else:
+        # piped/scripted input: plain input(), no interactive dropdown
+        read_line = lambda: input("joa> ")  # noqa: E731
+    _repl_loop(session, read_line, typer.echo, embed_client,
                lambda t: typer.echo(t, nl=False))
 
 

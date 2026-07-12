@@ -358,3 +358,28 @@ def test_clear_resets_history_keeping_system_prompt():
     assert session.messages == [system_msg]
     assert session.messages[0] is system_msg
     assert any("tozaland" in o.lower() for o in out)
+
+
+def _completions(text):
+    from prompt_toolkit.document import Document
+
+    from assistant.cli import SlashCompleter
+
+    doc = Document(text, len(text))
+    return [c.text for c in SlashCompleter().get_completions(doc, None)]
+
+
+def test_slash_prefix_suggests_all_commands():
+    from assistant.cli import SLASH_COMMANDS
+
+    assert set(_completions("/")) == set(SLASH_COMMANDS)
+
+
+def test_partial_slash_input_filters_suggestions():
+    assert _completions("/jo") == ["/joamodel"]
+    assert _completions("/c") == ["/clear"]
+
+
+def test_non_slash_input_suggests_nothing():
+    assert _completions("hello") == []
+    assert _completions("") == []

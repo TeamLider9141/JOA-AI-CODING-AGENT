@@ -107,3 +107,8 @@ Other slash commands: `/` or `/help` lists every command; `/clear` resets
 the conversation context to zero (keeps only the system prompt). Anything
 starting with `/` is handled locally and never sent to the LLM — unknown
 commands get an error pointing at `/help` instead of confusing the model.
+
+In a real terminal, typing `/` pops a live completion dropdown
+(prompt_toolkit): suggestions filter as you type, Tab/arrows select.
+Piped/scripted stdin falls back to plain `input()` automatically, so
+tests and shell pipelines are unaffected.

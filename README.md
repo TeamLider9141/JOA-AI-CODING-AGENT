@@ -72,6 +72,10 @@ protokolisiz, bitta streaming chaqiruv bilan javob oladi — javob token
 oqib chiqadi. Fayl/buyruq talab qiladigan topshiriqlar avvalgidek to'liq
 agent orqali bajariladi (model o'zi ajratadi).
 
+Boshqa slash-buyruqlar: `/` yoki `/help` — buyruqlar ro'yxati, `/clear` —
+suhbat kontekstini tozalash (tarix 0 dan boshlanadi). `/` bilan boshlangan
+kiritishlar hech qachon LLM'ga yuborilmaydi.
+
 ## Testlar
 
 ```

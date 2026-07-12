@@ -227,6 +227,20 @@ def _handle_joamodel(session, embed_client, read_line, echo) -> None:
     echo(f"✓ Model: {selected}")
 
 
+SLASH_COMMANDS = {
+    "/joamodel": "modelni almashtirish (Ollama modellari / Gemini)",
+    "/clear": "suhbat kontekstini tozalash (tarix 0 dan boshlanadi)",
+    "/help": "shu ro'yxat",
+}
+
+
+def _show_help(echo) -> None:
+    echo("Buyruqlar:")
+    for name, desc in SLASH_COMMANDS.items():
+        echo(f"  {name:<10} — {desc}")
+    echo("  exit, quit — sessiyadan chiqish")
+
+
 def _repl_loop(session, read_line, echo, embed_client, echo_token) -> None:
     """Drive an AgentSession from a line source until exit/EOF.
 
@@ -234,12 +248,13 @@ def _repl_loop(session, read_line, echo, embed_client, echo_token) -> None:
     input); `echo(text)` prints a line; `echo_token(text)` prints a
     streamed fragment without a newline (used by the fast path).
     `embed_client` is an OllamaClient used only for `/joamodel`'s model
-    listing. Each input line first tries `_fast_answer` (one direct
+    listing. Lines starting with "/" are slash commands and never reach
+    the LLM. Every other line first tries `_fast_answer` (one direct
     streaming chat call); the agent loop only runs when the model
     escalates. Kept separate from the CLI command so the loop is testable
     without a live model.
     """
-    echo("joa session — type 'exit' or Ctrl-D to quit")
+    echo("joa session — type 'exit' or Ctrl-D to quit ('/' — buyruqlar)")
     while True:
         try:
             line = read_line()
@@ -250,8 +265,16 @@ def _repl_loop(session, read_line, echo, embed_client, echo_token) -> None:
             return
         if not stripped:
             continue
-        if stripped == "/joamodel":
-            _handle_joamodel(session, embed_client, read_line, echo)
+        if stripped.startswith("/"):
+            if stripped == "/joamodel":
+                _handle_joamodel(session, embed_client, read_line, echo)
+            elif stripped == "/clear":
+                session.messages = session.messages[:1]
+                echo("✓ Suhbat tozalandi — kontekst 0 dan boshlanadi.")
+            elif stripped in ("/", "/help"):
+                _show_help(echo)
+            else:
+                echo(f"Noma'lum buyruq: {stripped!r}. Ro'yxat uchun: /help")
             continue
         start = time.perf_counter()
         try:

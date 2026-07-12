@@ -102,3 +102,8 @@ routes automatically — if the request needs file/command/search tools it
 replies `ESCALATE` internally and the normal agent loop takes over.
 Session history is capped (`MAX_HISTORY_MESSAGES` in `config.py`) so long
 sessions don't slow down over time.
+
+Other slash commands: `/` or `/help` lists every command; `/clear` resets
+the conversation context to zero (keeps only the system prompt). Anything
+starting with `/` is handled locally and never sent to the LLM — unknown
+commands get an error pointing at `/help` instead of confusing the model.

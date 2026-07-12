@@ -308,3 +308,53 @@ def test_fast_path_gemini_error_shows_hint_and_survives():
                lambda _t: None)
     assert any("/joamodel" in o for o in out)
     assert session.sent == []
+
+
+def test_help_lists_all_slash_commands():
+    session = FakeSession([])
+    lines = iter(["/help", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, None,
+               lambda _t: None)
+    joined = "\n".join(out)
+    assert "/joamodel" in joined
+    assert "/clear" in joined
+    assert "/help" in joined
+    assert "exit" in joined
+    assert session.sent == []  # never reached the LLM
+
+
+def test_bare_slash_also_lists_commands():
+    session = FakeSession([])
+    lines = iter(["/", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, None,
+               lambda _t: None)
+    assert any("/joamodel" in o for o in out)
+    assert session.sent == []
+
+
+def test_unknown_slash_command_shows_error_not_llm():
+    session = FakeSession([])
+    lines = iter(["/nomalum", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, None,
+               lambda _t: None)
+    joined = "\n".join(out)
+    assert "/nomalum" in joined
+    assert "/help" in joined
+    assert session.sent == []
+
+
+def test_clear_resets_history_keeping_system_prompt():
+    session = FakeSession([])
+    system_msg = session.messages[0]
+    session.messages.append({"role": "user", "content": "old turn"})
+    session.messages.append({"role": "assistant", "content": "old reply"})
+    lines = iter(["/clear", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, None,
+               lambda _t: None)
+    assert session.messages == [system_msg]
+    assert session.messages[0] is system_msg
+    assert any("tozaland" in o.lower() for o in out)

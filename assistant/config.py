@@ -41,6 +41,7 @@ FINAL_TOP_K = 10
 
 # --- Paths ---
 DATA_DIR = Path(__file__).parent / ".data"
+TRUST_FILE = Path.home() / ".config" / "joa" / "trusted_dirs.json"
 
 # --- Agent ---
 RUN_CMD_TIMEOUT = 120  # seconds; generous enough for git push on slow links

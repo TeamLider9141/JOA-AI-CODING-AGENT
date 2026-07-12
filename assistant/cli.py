@@ -1,3 +1,4 @@
+import json
 import sys
 import time
 from enum import Enum
@@ -90,6 +91,58 @@ def _require_index(data_dir: Path) -> None:
             "No index found. Run first: python -m assistant.cli index <repo>",
             err=True)
         raise typer.Exit(1)
+
+
+def _load_trusted(trust_path: Path = config.TRUST_FILE) -> set[str]:
+    if not trust_path.is_file():
+        return set()
+    try:
+        data = json.loads(trust_path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return set()
+    if not isinstance(data, list):
+        return set()
+    return set(data)
+
+
+def _save_trusted(dirs: set[str],
+                  trust_path: Path = config.TRUST_FILE) -> None:
+    trust_path.parent.mkdir(parents=True, exist_ok=True)
+    trust_path.write_text(json.dumps(sorted(dirs)))
+
+
+def _ensure_trusted(repo: Path, read_line, echo,
+                    trust_path: Path = config.TRUST_FILE) -> bool:
+    """Ask the user to trust `repo` (like Claude Code's workspace-trust
+    screen), unless it's already trusted. Returns True to proceed, False
+    to abort. A "1" answer is remembered in `trust_path`; anything else
+    (including EOF) is treated as decline and never saved."""
+    resolved = str(repo.resolve())
+    trusted = _load_trusted(trust_path)
+    if resolved in trusted:
+        return True
+    echo("─" * 60)
+    echo(" JOA — workspace'ga kirish:")
+    echo("")
+    echo(f"   {resolved}")
+    echo("")
+    echo(" Xavfsizlik tekshiruvi: bu papka o'zingiz yaratgan yoki")
+    echo(" ishonchli loyihami? JOA bu yerda fayllarni o'qiy, tahrirlay")
+    echo(" va buyruq bajara oladi.")
+    echo("")
+    echo(" 1. Ha, bu papkaga ishonaman")
+    echo(" 2. Yo'q, chiqish")
+    echo("─" * 60)
+    echo("Raqamni tanlang:")
+    try:
+        choice = read_line().strip()
+    except EOFError:
+        return False
+    if choice != "1":
+        return False
+    trusted.add(resolved)
+    _save_trusted(trusted, trust_path)
+    return True
 
 
 @app.command()
@@ -341,6 +394,9 @@ def repl(
         help="ollama | gemini (gemini needs GEMINI_API_KEY in .env)"),
 ):
     """Interactive agent session over the repo (defaults to current dir)."""
+    if sys.stdin.isatty():
+        if not _ensure_trusted(repo, lambda: input(""), typer.echo):
+            raise typer.Exit(0)
     data_dir = _data_dir(repo)
     _require_index(data_dir)
     embed_client = OllamaClient()

@@ -129,9 +129,33 @@ def test_repl_loop_echoes_elapsed_time_with_answer():
     _repl_loop(session, lambda: next(lines), out.append, None, lambda _t: None)
 
     answer_line = next(o for o in out if "the answer" in o)
-    match = re.search(r"\((\d+(?:\.\d+)?)s\)", answer_line)
+    match = re.search(r"\((\d+(?:\.\d+)?)s", answer_line)
     assert match, f"expected an elapsed-time suffix like (0.1s), got: {answer_line!r}"
     assert float(match.group(1)) >= 0.05
+
+
+def test_agent_path_footer_includes_model_name():
+    session = FakeSession(["the answer"])
+    session.client._model = "qwen2.5-coder:0.5b"
+    lines = iter(["do it", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, None, lambda _t: None)
+
+    answer_line = next(o for o in out if "the answer" in o)
+    assert "qwen2.5-coder:0.5b" in answer_line
+
+
+def test_fast_path_footer_includes_model_name():
+    session = FakeSession([])
+    session.client = FakeStreamClient(["quick answer"])
+    session.client._model = "qwen2.5-coder:0.5b"
+    lines = iter(["what is 2+2?", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, None,
+               lambda _t: None)
+
+    footer_line = next(o for o in out if "s ·" in o)
+    assert "qwen2.5-coder:0.5b" in footer_line
 
 
 def test_joamodel_lists_and_switches_to_chosen_ollama_model():
@@ -288,7 +312,7 @@ def test_fast_path_answer_skips_agent_and_shows_timing():
     _repl_loop(session, lambda: next(lines), out.append, None, tokens.append)
     assert session.sent == []  # agent path never ran
     assert "".join(tokens) == "quick answer"
-    assert any("s)" in o for o in out)  # timing suffix echoed
+    assert any("s ·" in o for o in out)  # timing suffix echoed
 
 
 def test_escalate_falls_back_to_agent_path():

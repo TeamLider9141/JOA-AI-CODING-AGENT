@@ -315,6 +315,10 @@ def _show_help(echo) -> None:
     echo("  exit, quit — sessiyadan chiqish")
 
 
+def _model_label(client) -> str:
+    return getattr(client, "_model", "?")
+
+
 def _run_bang(session, command, echo, echo_token) -> None:
     """Run a shell command directly, bypassing the LLM entirely, with
     live output (progress bars render in place) and no timeout — the
@@ -374,10 +378,10 @@ def _repl_loop(session, read_line, echo, embed_client, echo_token) -> None:
             if answer is None:
                 answer = session.send(stripped)
                 elapsed = time.perf_counter() - start
-                echo(f"{answer}\n({elapsed:.1f}s)")
+                echo(f"{answer}\n({elapsed:.1f}s · {_model_label(session.client)})")
             else:
                 elapsed = time.perf_counter() - start
-                echo(f"\n({elapsed:.1f}s)")
+                echo(f"\n({elapsed:.1f}s · {_model_label(session.client)})")
         except (OllamaError, GeminiError) as exc:
             echo(str(exc))
             if isinstance(exc, GeminiError):

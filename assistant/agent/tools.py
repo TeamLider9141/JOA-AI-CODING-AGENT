@@ -1,9 +1,9 @@
-import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
 from assistant import config
+from assistant.agent.proc import run_streaming
 from assistant.agent.safety import resolve_in_root
 from assistant.indexer.pipeline import Embedder, search_index
 
@@ -20,6 +20,7 @@ class ToolContext:
     data_dir: Path
     embedder: Embedder
     confirm: Callable[[str], bool]
+    output_sink: Callable[[str], None] | None = None
 
 
 def _truncate(text: str) -> str:
@@ -53,15 +54,12 @@ def run_cmd(ctx: ToolContext, args: dict,
     command = args["command"]
     if not ctx.confirm(f"run command: {command!r}?"):
         return "command cancelled by user"
-    try:
-        proc = subprocess.run(
-            command, shell=True, cwd=str(ctx.root),
-            capture_output=True, text=True, timeout=timeout,
-        )
-    except subprocess.TimeoutExpired:
+    sink = ctx.output_sink or (lambda _chunk: None)
+    returncode, output, timed_out = run_streaming(
+        command, ctx.root, sink, timeout=timeout)
+    if timed_out:
         return f"command timed out after {timeout}s"
-    output = (proc.stdout + proc.stderr) or "(no output)"
-    return _truncate(f"exit code: {proc.returncode}\n{output}")
+    return _truncate(f"exit code: {returncode}\n{output or '(no output)'}")
 
 
 def search_code(ctx: ToolContext, args: dict) -> str:

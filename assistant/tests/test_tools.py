@@ -6,12 +6,13 @@ from assistant.agent.tools import (
 )
 
 
-def make_ctx(tmp_path, confirm=lambda _msg: True):
+def make_ctx(tmp_path, confirm=lambda _msg: True, output_sink=None):
     return ToolContext(
         root=tmp_path,
         data_dir=tmp_path / ".data",
         embedder=lambda texts: [[0.0] for _ in texts],
         confirm=confirm,
+        output_sink=output_sink,
     )
 
 
@@ -61,3 +62,17 @@ def test_run_cmd_declined_does_not_run(tmp_path):
 def test_run_cmd_times_out(tmp_path):
     out = run_cmd(make_ctx(tmp_path), {"command": "sleep 5"}, timeout=1)
     assert "timed out" in out.lower()
+
+
+def test_run_cmd_streams_live_output_to_sink(tmp_path):
+    seen = []
+    ctx = make_ctx(tmp_path, output_sink=seen.append)
+    out = run_cmd(ctx, {"command": "echo hi"})
+    assert "hi" in "".join(seen)
+    assert "hi" in out  # final result still returned for the model too
+
+
+def test_run_cmd_works_without_output_sink(tmp_path):
+    ctx = make_ctx(tmp_path)  # output_sink=None by default
+    out = run_cmd(ctx, {"command": "echo hi"})
+    assert "hi" in out

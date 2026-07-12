@@ -31,8 +31,11 @@ class OllamaClient:
         )
 
     def embed(self, texts: list[str]) -> list[list[float]]:
-        data = self._post("/api/embed",
-                          {"model": config.EMBED_MODEL, "input": texts})
+        data = self._post("/api/embed", {
+            "model": config.EMBED_MODEL,
+            "input": texts,
+            "keep_alive": config.KEEP_ALIVE,
+        })
         return data["embeddings"]
 
     def list_models(self) -> list[str]:
@@ -60,6 +63,7 @@ class OllamaClient:
             "messages": messages,
             "stream": False,
             "options": {"num_ctx": config.NUM_CTX},
+            "keep_alive": config.KEEP_ALIVE,
         })
         return data["message"]["content"]
 
@@ -69,6 +73,7 @@ class OllamaClient:
             "messages": messages,
             "stream": True,
             "options": {"num_ctx": config.NUM_CTX},
+            "keep_alive": config.KEEP_ALIVE,
         }
         try:
             with self._client.stream("POST", "/api/chat", json=payload) as resp:

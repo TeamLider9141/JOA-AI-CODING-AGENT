@@ -3,6 +3,7 @@ import json
 import httpx
 import pytest
 
+from assistant import config
 from assistant.llm.ollama_client import OllamaClient, OllamaError
 
 
@@ -89,3 +90,34 @@ def test_close_closes_underlying_http_client():
                           transport=httpx.MockTransport(lambda r: httpx.Response(200)))
     client.close()
     assert client._client.is_closed
+
+
+def test_chat_sends_keep_alive():
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        assert body["keep_alive"] == config.KEEP_ALIVE
+        return httpx.Response(200, json={"message": {"content": "hi"}})
+
+    assert make_client(handler).chat(
+        [{"role": "user", "content": "hi"}]) == "hi"
+
+
+def test_chat_stream_sends_keep_alive():
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        assert body["keep_alive"] == config.KEEP_ALIVE
+        return httpx.Response(200, text=json.dumps(
+            {"message": {"content": "ok"}, "done": True}))
+
+    out = "".join(make_client(handler).chat_stream(
+        [{"role": "user", "content": "hi"}]))
+    assert out == "ok"
+
+
+def test_embed_sends_keep_alive():
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        assert body["keep_alive"] == config.KEEP_ALIVE
+        return httpx.Response(200, json={"embeddings": [[0.1]]})
+
+    assert make_client(handler).embed(["x"]) == [[0.1]]

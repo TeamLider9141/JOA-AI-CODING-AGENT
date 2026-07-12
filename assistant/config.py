@@ -25,6 +25,8 @@ CHAT_MODEL = "qwen2.5-coder:7b"
 EMBED_MODEL = "nomic-embed-text"
 NUM_CTX = 4096            # CPU-only: keep modest, tune later
 REQUEST_TIMEOUT = 300.0   # seconds; CPU inference is slow
+KEEP_ALIVE = "30m"        # keep models in RAM between requests ("-1" = forever);
+                          # avoids a full CPU model reload after Ollama's 5m default
 
 # --- Gemini ---
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")

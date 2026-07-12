@@ -13,6 +13,7 @@ from assistant.llm.ollama_client import OllamaClient, OllamaError
 from assistant.llm.gemini_client import GeminiClient, GeminiError
 from assistant.agent.runner import AgentSession, run_agent
 from assistant.agent.tools import ToolContext
+from assistant.agent.proc import run_streaming
 
 
 class Backend(str, Enum):
@@ -176,6 +177,7 @@ def agent(
             data_dir=data_dir,
             embedder=embed_client.embed,
             confirm=lambda msg: typer.confirm(msg),
+            output_sink=lambda t: typer.echo(t, nl=False),
         )
         answer = run_agent(task, ctx, chat_client)
     except (OllamaError, GeminiError) as exc:
@@ -255,7 +257,18 @@ def _show_help(echo) -> None:
     echo("Buyruqlar:")
     for name, desc in SLASH_COMMANDS.items():
         echo(f"  {name:<10} — {desc}")
+    echo("  !buyruq    — buyruqni to'g'ridan-to'g'ri bajarish (LLM'siz, "
+         "jonli chiqish)")
     echo("  exit, quit — sessiyadan chiqish")
+
+
+def _run_bang(session, command, echo, echo_token) -> None:
+    """Run a shell command directly, bypassing the LLM entirely, with
+    live output (progress bars render in place) and no timeout — the
+    user is watching and can Ctrl-C. Never touches session.messages."""
+    returncode, _output, _timed_out = run_streaming(
+        command, session.ctx.root, echo_token, timeout=None)
+    echo(f"\n(exit code: {returncode})")
 
 
 def _repl_loop(session, read_line, echo, embed_client, echo_token) -> None:
@@ -271,7 +284,8 @@ def _repl_loop(session, read_line, echo, embed_client, echo_token) -> None:
     escalates. Kept separate from the CLI command so the loop is testable
     without a live model.
     """
-    echo("joa session — type 'exit' or Ctrl-D to quit ('/' — buyruqlar)")
+    echo("joa session — type 'exit' or Ctrl-D to quit "
+         "('/' — buyruqlar, '!' — shell buyrug'i)")
     while True:
         try:
             line = read_line()
@@ -292,6 +306,14 @@ def _repl_loop(session, read_line, echo, embed_client, echo_token) -> None:
                 _show_help(echo)
             else:
                 echo(f"Noma'lum buyruq: {stripped!r}. Ro'yxat uchun: /help")
+            continue
+        if stripped.startswith("!"):
+            command = stripped[1:].strip()
+            if not command:
+                echo("Bo'sh buyruq. Masalan: "
+                     "!ollama pull qwen2.5-coder:0.5b")
+            else:
+                _run_bang(session, command, echo, echo_token)
             continue
         start = time.perf_counter()
         try:
@@ -332,6 +354,7 @@ def repl(
         data_dir=data_dir,
         embedder=embed_client.embed,
         confirm=lambda msg: typer.confirm(msg),
+        output_sink=lambda t: typer.echo(t, nl=False),
     )
     session = AgentSession(ctx, chat_client)
     if sys.stdin.isatty():

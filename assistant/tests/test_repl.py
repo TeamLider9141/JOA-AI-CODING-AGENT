@@ -1,5 +1,6 @@
 import re
 import time
+from pathlib import Path
 
 from typer.testing import CliRunner
 
@@ -10,12 +11,18 @@ from assistant.llm.gemini_client import GeminiClient, GeminiError
 runner = CliRunner()
 
 
+class FakeCtx:
+    def __init__(self, root=None):
+        self.root = root or Path(".")
+
+
 class FakeSession:
     def __init__(self, answers):
         self._answers = list(answers)
         self.sent = []
         self.client = AlwaysEscalateClient()
         self.messages = [{"role": "system", "content": "agent prompt"}]
+        self.ctx = FakeCtx()
 
     def send(self, task):
         self.sent.append(task)
@@ -383,3 +390,47 @@ def test_partial_slash_input_filters_suggestions():
 def test_non_slash_input_suggests_nothing():
     assert _completions("hello") == []
     assert _completions("") == []
+
+
+def test_bang_command_runs_directly_without_llm(monkeypatch):
+    calls = []
+
+    def fake_run_streaming(command, cwd, on_output, timeout=None):
+        calls.append((command, cwd, timeout))
+        on_output("hi\n")
+        return 0, "hi\n", False
+
+    monkeypatch.setattr("assistant.cli.run_streaming", fake_run_streaming)
+    session = FakeSession([])
+    lines = iter(["!echo hi", "exit"])
+    out = []
+    tokens = []
+    _repl_loop(session, lambda: next(lines), out.append, None,
+               tokens.append)
+    assert calls == [("echo hi", session.ctx.root, None)]
+    assert "".join(tokens) == "hi\n"
+    assert any("exit code: 0" in o for o in out)
+    assert session.sent == []  # never reached the LLM or agent loop
+
+
+def test_bang_command_shows_nonzero_exit_code(monkeypatch):
+    def fake_run_streaming(command, cwd, on_output, timeout=None):
+        return 1, "", False
+
+    monkeypatch.setattr("assistant.cli.run_streaming", fake_run_streaming)
+    session = FakeSession([])
+    lines = iter(["!false", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, None,
+               lambda _t: None)
+    assert any("exit code: 1" in o for o in out)
+
+
+def test_bare_bang_shows_usage_hint():
+    session = FakeSession([])
+    lines = iter(["!", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, None,
+               lambda _t: None)
+    assert any("bo'sh" in o.lower() for o in out)
+    assert session.sent == []

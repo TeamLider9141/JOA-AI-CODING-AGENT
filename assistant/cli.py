@@ -59,7 +59,7 @@ def _fast_answer(session, line, echo_token):
     buffer = ""
     for chunk in stream:
         buffer += chunk
-        if len(buffer) >= _SNIFF_LEN:
+        if len(buffer.strip()) >= _SNIFF_LEN:
             break
     if buffer.strip().upper().startswith("ESCALATE"):
         return None

@@ -14,6 +14,8 @@ class FakeSession:
     def __init__(self, answers):
         self._answers = list(answers)
         self.sent = []
+        self.client = AlwaysEscalateClient()
+        self.messages = [{"role": "system", "content": "agent prompt"}]
 
     def send(self, task):
         self.sent.append(task)
@@ -28,11 +30,28 @@ class FakeEmbedClient:
         return self._models
 
 
+class AlwaysEscalateClient:
+    """chat_stream that always answers ESCALATE — forces the agent path."""
+
+    def chat_stream(self, messages):
+        yield "ESCALATE"
+
+
+class FakeStreamClient:
+    """chat_stream yields the given chunks."""
+
+    def __init__(self, chunks):
+        self._chunks = list(chunks)
+
+    def chat_stream(self, messages):
+        yield from self._chunks
+
+
 def test_repl_loop_sends_lines_and_exits_on_exit():
     session = FakeSession(["answer one"])
     lines = iter(["do a thing", "exit"])
     out = []
-    _repl_loop(session, lambda: next(lines), out.append, None)
+    _repl_loop(session, lambda: next(lines), out.append, None, lambda _t: None)
     assert session.sent == ["do a thing"]
     assert any("answer one" in o for o in out)
 
@@ -40,7 +59,7 @@ def test_repl_loop_sends_lines_and_exits_on_exit():
 def test_repl_loop_skips_blank_lines():
     session = FakeSession(["ans"])
     lines = iter(["", "   ", "real task", "quit"])
-    _repl_loop(session, lambda: next(lines), lambda _o: None, None)
+    _repl_loop(session, lambda: next(lines), lambda _o: None, None, lambda _t: None)
     assert session.sent == ["real task"]
 
 
@@ -50,7 +69,7 @@ def test_repl_loop_exits_on_eof():
     def read_line():
         raise EOFError
 
-    _repl_loop(session, read_line, lambda _o: None, None)
+    _repl_loop(session, read_line, lambda _o: None, None, lambda _t: None)
     assert session.sent == []
 
 
@@ -58,6 +77,8 @@ def test_repl_loop_survives_ollama_error():
     class BoomSession:
         def __init__(self):
             self.sent = []
+            self.client = AlwaysEscalateClient()
+            self.messages = [{"role": "system", "content": "agent prompt"}]
 
         def send(self, task):
             self.sent.append(task)
@@ -66,7 +87,7 @@ def test_repl_loop_survives_ollama_error():
     session = BoomSession()
     lines = iter(["try this", "exit"])
     out = []
-    _repl_loop(session, lambda: next(lines), out.append, None)
+    _repl_loop(session, lambda: next(lines), out.append, None, lambda _t: None)
     assert session.sent == ["try this"]
     assert any("down" in o for o in out)
 
@@ -87,6 +108,8 @@ def test_repl_loop_echoes_elapsed_time_with_answer():
     class SlowSession:
         def __init__(self):
             self.sent = []
+            self.client = AlwaysEscalateClient()
+            self.messages = [{"role": "system", "content": "agent prompt"}]
 
         def send(self, task):
             self.sent.append(task)
@@ -96,7 +119,7 @@ def test_repl_loop_echoes_elapsed_time_with_answer():
     session = SlowSession()
     lines = iter(["do it", "exit"])
     out = []
-    _repl_loop(session, lambda: next(lines), out.append, None)
+    _repl_loop(session, lambda: next(lines), out.append, None, lambda _t: None)
 
     answer_line = next(o for o in out if "the answer" in o)
     match = re.search(r"\((\d+(?:\.\d+)?)s\)", answer_line)
@@ -111,7 +134,7 @@ def test_joamodel_lists_and_switches_to_chosen_ollama_model():
         ["qwen2.5-coder:1.5b", "qwen2.5-coder:3b"])
     lines = iter(["/joamodel", "2", "exit"])
     out = []
-    _repl_loop(session, lambda: next(lines), out.append, embed_client)
+    _repl_loop(session, lambda: next(lines), out.append, embed_client, lambda _t: None)
     assert isinstance(session.client, OllamaClient)
     assert session.client._model == "qwen2.5-coder:3b"
     assert any("2. qwen2.5-coder:3b" in o for o in out)
@@ -131,7 +154,7 @@ def test_joamodel_closes_previous_client_on_switch():
     session.client = old_client
     embed_client = FakeEmbedClient(["qwen2.5-coder:1.5b"])
     lines = iter(["/joamodel", "1", "exit"])
-    _repl_loop(session, lambda: next(lines), lambda _o: None, embed_client)
+    _repl_loop(session, lambda: next(lines), lambda _o: None, embed_client, lambda _t: None)
     assert old_client.closed is True
     assert session.client is not old_client
 
@@ -142,7 +165,7 @@ def test_joamodel_unicode_digit_does_not_crash():
     embed_client = FakeEmbedClient(["qwen2.5-coder:1.5b"])
     lines = iter(["/joamodel", "³", "exit"])  # superscript 3
     out = []
-    _repl_loop(session, lambda: next(lines), out.append, embed_client)
+    _repl_loop(session, lambda: next(lines), out.append, embed_client, lambda _t: None)
     assert session.client == "initial"
     assert any("Noto'g'ri tanlov" in o for o in out)
 
@@ -154,7 +177,7 @@ def test_joamodel_switches_to_gemini_when_key_present(monkeypatch):
     embed_client = FakeEmbedClient(["qwen2.5-coder:1.5b"])
     lines = iter(["/joamodel", "2", "exit"])  # 1=qwen..1.5b, 2=gemini
     out = []
-    _repl_loop(session, lambda: next(lines), out.append, embed_client)
+    _repl_loop(session, lambda: next(lines), out.append, embed_client, lambda _t: None)
     assert isinstance(session.client, GeminiClient)
     assert any("Model: gemini" in o for o in out)
 
@@ -167,7 +190,7 @@ def test_joamodel_gemini_without_key_warns_and_keeps_current_client(
     embed_client = FakeEmbedClient([])
     lines = iter(["/joamodel", "1", "exit"])  # only option is "gemini"
     out = []
-    _repl_loop(session, lambda: next(lines), out.append, embed_client)
+    _repl_loop(session, lambda: next(lines), out.append, embed_client, lambda _t: None)
     assert session.client == "initial"
     assert any("GEMINI_API_KEY" in o for o in out)
 
@@ -178,7 +201,7 @@ def test_joamodel_invalid_number_keeps_current_client():
     embed_client = FakeEmbedClient(["qwen2.5-coder:1.5b"])
     lines = iter(["/joamodel", "99", "exit"])
     out = []
-    _repl_loop(session, lambda: next(lines), out.append, embed_client)
+    _repl_loop(session, lambda: next(lines), out.append, embed_client, lambda _t: None)
     assert session.client == "initial"
     assert any("Noto'g'ri tanlov" in o for o in out)
 
@@ -195,7 +218,7 @@ def test_joamodel_eof_during_selection_does_not_crash():
         except StopIteration:
             raise EOFError
 
-    _repl_loop(session, read_line, lambda _o: None, embed_client)
+    _repl_loop(session, read_line, lambda _o: None, embed_client, lambda _t: None)
     assert session.client == "initial"
 
 
@@ -208,7 +231,7 @@ def test_joamodel_list_models_failure_keeps_current_client():
     session.client = "initial"
     lines = iter(["/joamodel", "exit"])
     out = []
-    _repl_loop(session, lambda: next(lines), out.append, BoomEmbedClient())
+    _repl_loop(session, lambda: next(lines), out.append, BoomEmbedClient(), lambda _t: None)
     assert session.client == "initial"
     assert any("down" in o for o in out)
 
@@ -217,6 +240,8 @@ def test_repl_loop_gemini_error_suggests_joamodel():
     class BoomSession:
         def __init__(self):
             self.sent = []
+            self.client = AlwaysEscalateClient()
+            self.messages = [{"role": "system", "content": "agent prompt"}]
 
         def send(self, task):
             self.sent.append(task)
@@ -225,7 +250,7 @@ def test_repl_loop_gemini_error_suggests_joamodel():
     session = BoomSession()
     lines = iter(["try this", "exit"])
     out = []
-    _repl_loop(session, lambda: next(lines), out.append, None)
+    _repl_loop(session, lambda: next(lines), out.append, None, lambda _t: None)
     assert any("/joamodel" in o for o in out)
 
 
@@ -233,6 +258,8 @@ def test_repl_loop_ollama_error_does_not_suggest_joamodel():
     class BoomSession:
         def __init__(self):
             self.sent = []
+            self.client = AlwaysEscalateClient()
+            self.messages = [{"role": "system", "content": "agent prompt"}]
 
         def send(self, task):
             self.sent.append(task)
@@ -241,5 +268,43 @@ def test_repl_loop_ollama_error_does_not_suggest_joamodel():
     session = BoomSession()
     lines = iter(["try this", "exit"])
     out = []
-    _repl_loop(session, lambda: next(lines), out.append, None)
+    _repl_loop(session, lambda: next(lines), out.append, None, lambda _t: None)
     assert not any("/joamodel" in o for o in out)
+
+
+def test_fast_path_answer_skips_agent_and_shows_timing():
+    session = FakeSession([])
+    session.client = FakeStreamClient(["quick ", "answer"])
+    lines = iter(["what is 2+2?", "exit"])
+    out = []
+    tokens = []
+    _repl_loop(session, lambda: next(lines), out.append, None, tokens.append)
+    assert session.sent == []  # agent path never ran
+    assert "".join(tokens) == "quick answer"
+    assert any("s)" in o for o in out)  # timing suffix echoed
+
+
+def test_escalate_falls_back_to_agent_path():
+    session = FakeSession(["agent answer"])
+    lines = iter(["refactor the auth module", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, None,
+               lambda _t: None)
+    assert session.sent == ["refactor the auth module"]
+    assert any("agent answer" in o for o in out)
+
+
+def test_fast_path_gemini_error_shows_hint_and_survives():
+    class BoomStreamClient:
+        def chat_stream(self, messages):
+            raise GeminiError("rate limited")
+            yield  # pragma: no cover — makes this a generator
+
+    session = FakeSession([])
+    session.client = BoomStreamClient()
+    lines = iter(["hello", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, None,
+               lambda _t: None)
+    assert any("/joamodel" in o for o in out)
+    assert session.sent == []

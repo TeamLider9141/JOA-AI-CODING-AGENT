@@ -227,14 +227,17 @@ def _handle_joamodel(session, embed_client, read_line, echo) -> None:
     echo(f"✓ Model: {selected}")
 
 
-def _repl_loop(session, read_line, echo, embed_client) -> None:
+def _repl_loop(session, read_line, echo, embed_client, echo_token) -> None:
     """Drive an AgentSession from a line source until exit/EOF.
 
     `read_line()` returns the next input line (raising EOFError at end of
-    input); `echo(text)` prints a line. `embed_client` is an OllamaClient
-    used only for `/joamodel`'s model listing (embeddings always stay on
-    Ollama regardless of which chat backend is active). Kept separate from
-    the CLI command so the loop is testable without a live model.
+    input); `echo(text)` prints a line; `echo_token(text)` prints a
+    streamed fragment without a newline (used by the fast path).
+    `embed_client` is an OllamaClient used only for `/joamodel`'s model
+    listing. Each input line first tries `_fast_answer` (one direct
+    streaming chat call); the agent loop only runs when the model
+    escalates. Kept separate from the CLI command so the loop is testable
+    without a live model.
     """
     echo("joa session — type 'exit' or Ctrl-D to quit")
     while True:
@@ -252,14 +255,19 @@ def _repl_loop(session, read_line, echo, embed_client) -> None:
             continue
         start = time.perf_counter()
         try:
-            answer = session.send(stripped)
+            answer = _fast_answer(session, stripped, echo_token)
+            if answer is None:
+                answer = session.send(stripped)
+                elapsed = time.perf_counter() - start
+                echo(f"{answer}\n({elapsed:.1f}s)")
+            else:
+                elapsed = time.perf_counter() - start
+                echo(f"\n({elapsed:.1f}s)")
         except (OllamaError, GeminiError) as exc:
             echo(str(exc))
             if isinstance(exc, GeminiError):
                 echo("/joamodel bilan Ollama modeliga qayting.")
             continue
-        elapsed = time.perf_counter() - start
-        echo(f"{answer}\n({elapsed:.1f}s)")
 
 
 @app.command()
@@ -286,7 +294,8 @@ def repl(
         confirm=lambda msg: typer.confirm(msg),
     )
     session = AgentSession(ctx, chat_client)
-    _repl_loop(session, lambda: input("joa> "), typer.echo, embed_client)
+    _repl_loop(session, lambda: input("joa> "), typer.echo, embed_client,
+               lambda t: typer.echo(t, nl=False))
 
 
 def build_prompt(question: str,

@@ -32,6 +32,49 @@ SYSTEM_PROMPT = (
     "is insufficient, say what is missing instead of guessing."
 )
 
+FAST_SYSTEM_PROMPT = (
+    "You are a coding assistant chatting with a user inside their "
+    "repository. If answering would require reading or writing files, "
+    "running commands, or searching the codebase, reply with exactly "
+    "ESCALATE and nothing else. Otherwise answer the question directly "
+    "and concisely."
+)
+
+_SNIFF_LEN = len("ESCALATE")
+
+
+def _fast_answer(session, line, echo_token):
+    """Try answering `line` with one direct streaming chat call.
+
+    Returns the full streamed answer, or None if the model escalated (or
+    produced nothing) — in which case the caller should run the agent
+    loop. On success the exchange is appended to session.messages so the
+    agent keeps conversational context."""
+    messages = (
+        [{"role": "system", "content": FAST_SYSTEM_PROMPT}]
+        + session.messages[1:]
+        + [{"role": "user", "content": line}]
+    )
+    stream = session.client.chat_stream(messages)
+    buffer = ""
+    for chunk in stream:
+        buffer += chunk
+        if len(buffer) >= _SNIFF_LEN:
+            break
+    if buffer.strip().upper().startswith("ESCALATE"):
+        return None
+    if not buffer.strip():
+        return None
+    echo_token(buffer)
+    parts = [buffer]
+    for chunk in stream:
+        echo_token(chunk)
+        parts.append(chunk)
+    answer = "".join(parts)
+    session.messages.append({"role": "user", "content": line})
+    session.messages.append({"role": "assistant", "content": answer})
+    return answer
+
 
 def _data_dir(repo: Path) -> Path:
     return config.DATA_DIR / repo.resolve().name

@@ -44,3 +44,5 @@ DATA_DIR = Path(__file__).parent / ".data"
 
 # --- Agent ---
 RUN_CMD_TIMEOUT = 120  # seconds; generous enough for git push on slow links
+MAX_HISTORY_MESSAGES = 40  # cap session history (~20 exchanges) so CPU
+                           # prompt-eval stays bounded in long REPL sessions

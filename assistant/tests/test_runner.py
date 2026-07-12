@@ -1,6 +1,6 @@
 import pytest
 
-from assistant.agent.runner import run_agent
+from assistant.agent.runner import AgentSession, run_agent
 from assistant.agent.tools import ToolContext
 
 
@@ -78,3 +78,23 @@ def test_iteration_cap_stops_infinite_loop(tmp_path):
     result = run_agent("loop", make_ctx(tmp_path), client, max_iters=3)
     assert "stopped" in result.lower()
     assert len(client.calls) == 3
+
+
+def test_send_caps_history_keeping_system_prompt(tmp_path):
+    from assistant import config
+
+    client = FakeClient(['{"action": "final", "args": {}, "answer": "ok"}'])
+    session = AgentSession(make_ctx(tmp_path), client)
+    system_msg = session.messages[0]
+    for i in range(config.MAX_HISTORY_MESSAGES + 20):
+        session.messages.append(
+            {"role": "user", "content": f"old message {i}"})
+    newest_before = session.messages[-1]
+
+    session.send("new task")
+
+    assert session.messages[0] is system_msg
+    assert not any(
+        m["content"] == "old message 0" for m in session.messages)
+    assert any(
+        m["content"] == newest_before["content"] for m in session.messages)

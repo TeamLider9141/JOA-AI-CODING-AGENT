@@ -1,3 +1,4 @@
+from assistant import config
 from assistant.agent.protocol import (
     ProtocolError, build_system_prompt, parse_action,
 )
@@ -33,6 +34,9 @@ class AgentSession:
         ]
 
     def send(self, task: str) -> str:
+        if len(self.messages) > config.MAX_HISTORY_MESSAGES:
+            self.messages = [self.messages[0]] + \
+                self.messages[-(config.MAX_HISTORY_MESSAGES - 1):]
         self.messages.append({"role": "user", "content": f"Task: {task}"})
         plan: list[str] = []
 

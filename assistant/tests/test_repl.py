@@ -168,8 +168,8 @@ def test_joamodel_lists_and_switches_to_chosen_ollama_model():
     _repl_loop(session, lambda: next(lines), out.append, embed_client, lambda _t: None)
     assert isinstance(session.client, OllamaClient)
     assert session.client._model == "qwen2.5-coder:3b"
-    assert any("2. qwen2.5-coder:3b" in o for o in out)
-    assert any("3. gemini" in o for o in out)
+    assert any("2." in o and "qwen2.5-coder:3b" in o for o in out)
+    assert any("3." in o and "gemini" in o for o in out)
 
 
 def test_joamodel_closes_previous_client_on_switch():
@@ -458,3 +458,31 @@ def test_bare_bang_shows_usage_hint():
                lambda _t: None)
     assert any("bo'sh" in o.lower() for o in out)
     assert session.sent == []
+
+
+def test_joamodel_list_marks_current_model():
+    session = FakeSession([])
+    session.client._model = "qwen2.5-coder:1.5b"
+    embed_client = FakeEmbedClient(
+        ["qwen2.5-coder:1.5b", "qwen2.5-coder:3b"])
+    lines = iter(["/joamodel", "1", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, embed_client,
+               lambda _t: None)
+    current_line = next(
+        o for o in out if "1." in o and "qwen2.5-coder:1.5b" in o)
+    other_line = next(
+        o for o in out if "2." in o and "qwen2.5-coder:3b" in o)
+    assert "joriy" in current_line
+    assert "joriy" not in other_line
+
+
+def test_joamodel_list_uses_ansi_color_codes():
+    session = FakeSession([])
+    embed_client = FakeEmbedClient(["qwen2.5-coder:1.5b"])
+    lines = iter(["/joamodel", "1", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, embed_client,
+               lambda _t: None)
+    joined = "\n".join(out)
+    assert "\x1b[" in joined  # at least one ANSI escape code present

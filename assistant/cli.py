@@ -251,8 +251,16 @@ def _handle_joamodel(session, embed_client, read_line, echo) -> None:
         echo(str(exc))
         return
     options = models + ["gemini"]
+    current = _model_label(session.client)
     for i, name in enumerate(options, start=1):
-        echo(f"{i}. {name}")
+        if name == current:
+            label = typer.style(f"{name} (joriy)",
+                                fg=typer.colors.GREEN, bold=True)
+        elif name == "gemini":
+            label = typer.style(name, fg=typer.colors.MAGENTA)
+        else:
+            label = typer.style(name, fg=typer.colors.CYAN)
+        echo(f"{i}. {label}")
     echo("Raqamni tanlang:")
     try:
         choice_line = read_line()
@@ -282,7 +290,7 @@ def _handle_joamodel(session, embed_client, read_line, echo) -> None:
     if hasattr(session.client, "close"):
         session.client.close()
     session.client = new_client
-    echo(f"✓ Model: {selected}")
+    echo(typer.style(f"✓ Model: {selected}", fg=typer.colors.GREEN))
 
 
 SLASH_COMMANDS = {

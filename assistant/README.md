@@ -108,6 +108,14 @@ the conversation context to zero (keeps only the system prompt). Anything
 starting with `/` is handled locally and never sent to the LLM — unknown
 commands get an error pointing at `/help` instead of confusing the model.
 
+`!command` runs a shell command directly, bypassing the LLM/agent loop
+entirely, with live streaming output — a bare carriage return (`\r`)
+passes through untouched so progress bars (`!ollama pull ...`) redraw in
+place instead of spamming new lines. No timeout, since you're watching
+and can Ctrl-C. The agent's own `run_cmd` tool also streams live now
+(via `ToolContext.output_sink`) instead of going silent until a
+long-running command finishes.
+
 In a real terminal, typing `/` pops a live completion dropdown
 (prompt_toolkit): suggestions filter as you type, Tab/arrows select.
 Piped/scripted stdin falls back to plain `input()` automatically, so

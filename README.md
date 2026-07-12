@@ -78,6 +78,12 @@ kiritishlar hech qachon LLM'ga yuborilmaydi. Terminalda `/` yozganingizda
 buyruqlar ro'yxati jonli dropdown sifatida chiqadi (yozgan sari
 filtrlanadi, Tab/strelka bilan tanlanadi).
 
+`!buyruq` — shell buyrug'ini LLM'siz to'g'ridan-to'g'ri bajaradi, chiqish
+**jonli** oqadi (progress-barlar ham to'g'ri ko'rinadi, masalan
+`!ollama pull qwen2.5-coder:0.5b`). Timeout yo'q — Ctrl-C bilan
+to'xtatasiz. Agentning o'z `run_cmd` vositasi (masalan "buyruq bajar" deb
+so'raganingizda) ham endi natijani kutmasdan jonli ko'rsatadi.
+
 ## Testlar
 
 ```

@@ -98,3 +98,9 @@ def test_send_caps_history_keeping_system_prompt(tmp_path):
         m["content"] == "old message 0" for m in session.messages)
     assert any(
         m["content"] == newest_before["content"] for m in session.messages)
+    # pin the exact slice boundary: 61 messages trimmed to 1 system +
+    # 39 newest keeps "old message 21.." and drops "old message 20"
+    assert not any(
+        m["content"] == "old message 20" for m in session.messages)
+    assert any(
+        m["content"] == "old message 21" for m in session.messages)

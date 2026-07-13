@@ -621,9 +621,10 @@ def repl(
             raise typer.Exit(0)
     data_dir = _data_dir(repo)
     embed_client = OllamaClient()
-    if sys.stdin.isatty():
+    if interactive:
+        confirm = lambda msg: _arrow_confirm(msg, typer.echo, select)  # noqa: E731
         if not _ensure_indexed(repo, data_dir, embed_client, typer.echo,
-                               typer.confirm):
+                               confirm):
             raise typer.Exit(1)
     else:
         _require_index(data_dir)
@@ -640,7 +641,7 @@ def repl(
         output_sink=lambda t: typer.echo(t, nl=False),
     )
     session = AgentSession(ctx, chat_client)
-    if sys.stdin.isatty():
+    if interactive:
         prompt_session = PromptSession(
             "joa> ", completer=SlashCompleter(),
             complete_while_typing=True)
@@ -648,7 +649,6 @@ def repl(
     else:
         # piped/scripted input: plain input(), no interactive dropdown
         read_line = lambda: input("joa> ")  # noqa: E731
-    select = _arrow_select if sys.stdin.isatty() else None
     _repl_loop(session, read_line, typer.echo, embed_client,
                lambda t: typer.echo(t, nl=False), select=select)
 

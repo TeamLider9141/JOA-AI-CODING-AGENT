@@ -98,6 +98,15 @@ def search_index(
     embedder: Embedder,
     mode: str = "hybrid",
 ) -> list[tuple[str, float, dict]]:
+    has_vector = (data_dir / "qdrant").exists()
+    if mode == "vector" and not has_vector:
+        return []
+
+    bm25 = BM25Store.load(data_dir / "bm25.json")
+    bm25_results = bm25.search(query, config.BM25_TOP_K)
+    if not has_vector:
+        return bm25_results[:config.FINAL_TOP_K]
+
     qvec = embedder([query])[0]
     store = QdrantStore(data_dir / "qdrant")
     vector_results = store.search(qvec, config.VECTOR_TOP_K)
@@ -105,8 +114,6 @@ def search_index(
     if mode == "vector":
         return vector_results[:config.FINAL_TOP_K]
 
-    bm25 = BM25Store.load(data_dir / "bm25.json")
-    bm25_results = bm25.search(query, config.BM25_TOP_K)
     # BM25 first: on an RRF score tie (symmetric rank swap between the two
     # retrievers), dict insertion order decides the winner. Exact lexical
     # matches should win those ties over vector-similarity noise.

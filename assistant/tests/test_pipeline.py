@@ -105,3 +105,38 @@ def test_build_vector_index_respects_qdrant_dirname(tmp_path):
 
     assert (data / "qdrant.new").is_dir()
     assert not (data / "qdrant").exists()
+
+
+def test_search_index_falls_back_to_bm25_only_without_qdrant(tmp_path):
+    repo = make_repo(tmp_path)
+    data = tmp_path / "data"
+    build_bm25_index(repo, data)  # no vector index built at all
+
+    results = search_index("JWTMiddleware", data, fake_embedder)
+
+    assert results, "expected at least one result"
+    assert results[0][2]["path"] == "auth.py"
+
+
+def test_search_index_vector_mode_without_qdrant_returns_empty(tmp_path):
+    repo = make_repo(tmp_path)
+    data = tmp_path / "data"
+    build_bm25_index(repo, data)
+
+    results = search_index("anything", data, fake_embedder, mode="vector")
+
+    assert results == []
+
+
+def test_search_index_hybrid_still_uses_vector_when_present(tmp_path):
+    """Regression guard: once both stores exist, behavior is unchanged
+    from before this task (hybrid RRF merge of both)."""
+    repo = make_repo(tmp_path)
+    data = tmp_path / "data"
+    build_bm25_index(repo, data)
+    build_vector_index(repo, data, fake_embedder)
+
+    results = search_index("JWTMiddleware", data, fake_embedder)
+
+    assert results
+    assert results[0][2]["path"] == "auth.py"

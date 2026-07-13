@@ -371,6 +371,15 @@ def _arrow_select(options: list[str], current_index: int) -> int | None:
     return app.run()
 
 
+def _arrow_confirm(question: str, echo, select=_arrow_select) -> bool:
+    """Two-option arrow-key menu: Ha / Yo'q. Prints `question` via `echo`
+    first, then the menu. Returns True for "Ha", False for "Yo'q" or a
+    cancelled selection (Esc/Ctrl-C, which `select` reports as None)."""
+    echo(question)
+    index = select(["Ha", "Yo'q"], 0)
+    return index == 0
+
+
 def _handle_joamodel(session, embed_client, read_line, echo,
                      select=None) -> None:
     """List installed Ollama models plus "gemini"; switch session.client

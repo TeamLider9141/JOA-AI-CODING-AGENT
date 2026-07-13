@@ -594,3 +594,48 @@ def test_arrow_select_escape_cancels():
         with create_app_session(input=pipe_input, output=DummyOutput()):
             result = _arrow_select(["a", "b", "c"], current_index=0)
     assert result is None
+
+
+def test_arrow_confirm_ha_returns_true_and_echoes_question():
+    from assistant.cli import _arrow_confirm
+
+    out = []
+    result = _arrow_confirm("Davom etamizmi?", out.append,
+                            select=lambda options, current: 0)
+
+    assert result is True
+    assert out == ["Davom etamizmi?"]
+
+
+def test_arrow_confirm_yoq_returns_false():
+    from assistant.cli import _arrow_confirm
+
+    result = _arrow_confirm("Davom etamizmi?", lambda _o: None,
+                            select=lambda options, current: 1)
+
+    assert result is False
+
+
+def test_arrow_confirm_cancelled_returns_false():
+    from assistant.cli import _arrow_confirm
+
+    result = _arrow_confirm("Davom etamizmi?", lambda _o: None,
+                            select=lambda options, current: None)
+
+    assert result is False
+
+
+def test_arrow_confirm_options_are_ha_yoq_in_order():
+    from assistant.cli import _arrow_confirm
+
+    seen = {}
+
+    def fake_select(options, current_index):
+        seen["options"] = options
+        seen["current_index"] = current_index
+        return 0
+
+    _arrow_confirm("Q?", lambda _o: None, select=fake_select)
+
+    assert seen["options"] == ["Ha", "Yo'q"]
+    assert seen["current_index"] == 0

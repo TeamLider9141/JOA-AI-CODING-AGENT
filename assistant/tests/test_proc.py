@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from assistant.agent.proc import run_streaming
 
 
@@ -43,3 +45,26 @@ def test_run_streaming_runs_in_given_cwd(tmp_path):
     chunks = []
     run_streaming("ls", tmp_path, chunks.append)
     assert "marker.txt" in "".join(chunks)
+
+
+def test_run_streaming_kills_process_and_reraises_on_keyboard_interrupt(
+        tmp_path, monkeypatch):
+    import subprocess as subprocess_module
+
+    original_wait = subprocess_module.Popen.wait
+    calls = {"count": 0}
+
+    def fake_wait(self, timeout=None):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise KeyboardInterrupt
+        return original_wait(self, timeout=timeout)
+
+    monkeypatch.setattr(subprocess_module.Popen, "wait", fake_wait)
+
+    with pytest.raises(KeyboardInterrupt):
+        run_streaming("sleep 5", tmp_path, lambda _c: None)
+    # a second (real) wait() call means our code actually called
+    # proc.kill() before re-raising -- otherwise this would hang for
+    # the full 5s (or longer) instead of returning almost immediately
+    assert calls["count"] == 2

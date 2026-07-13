@@ -104,6 +104,10 @@ filtrlanadi, Tab/strelka bilan tanlanadi).
 to'xtatasiz. Agentning o'z `run_cmd` vositasi (masalan "buyruq bajar" deb
 so'raganingizda) ham endi natijani kutmasdan jonli ko'rsatadi.
 
+**Ctrl-C** — joriy amalni (model javob yozayotgani, agent ishlayotgani,
+`!buyruq` bajarilayotgani) to'xtatadi, `joa`dan chiqarmaydi. `exit`/Ctrl-D
+esa butun sessiyani yopadi.
+
 ## Testlar
 
 ```

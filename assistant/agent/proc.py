@@ -42,6 +42,11 @@ def run_streaming(
         proc.kill()
         proc.wait()
         timed_out = True
+    except KeyboardInterrupt:
+        proc.kill()
+        proc.wait()
+        reader.join(timeout=2)
+        raise
     reader.join(timeout=2)
     output = b"".join(chunks).decode(errors="replace")
     return proc.returncode, output, timed_out

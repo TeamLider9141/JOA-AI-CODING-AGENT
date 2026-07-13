@@ -486,3 +486,57 @@ def test_joamodel_list_uses_ansi_color_codes():
                lambda _t: None)
     joined = "\n".join(out)
     assert "\x1b[" in joined  # at least one ANSI escape code present
+
+
+def test_keyboard_interrupt_during_fast_path_stays_in_repl():
+    class InterruptingClient:
+        def chat_stream(self, messages):
+            raise KeyboardInterrupt
+            yield  # pragma: no cover — makes this a generator function
+
+    session = FakeSession([])
+    session.client = InterruptingClient()
+    lines = iter(["hello", "still here"])
+    out = []
+
+    def read_line():
+        try:
+            return next(lines)
+        except StopIteration:
+            raise EOFError
+
+    _repl_loop(session, read_line, out.append, None, lambda _t: None)
+    assert any("to'xtatildi" in o.lower() for o in out)
+
+
+def test_keyboard_interrupt_during_agent_send_stays_in_repl():
+    class InterruptingSession:
+        def __init__(self):
+            self.sent = []
+            self.client = AlwaysEscalateClient()
+            self.messages = [{"role": "system", "content": "agent prompt"}]
+
+        def send(self, task):
+            self.sent.append(task)
+            raise KeyboardInterrupt
+
+    session = InterruptingSession()
+    lines = iter(["do something", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, None,
+               lambda _t: None)
+    assert session.sent == ["do something"]
+    assert any("to'xtatildi" in o.lower() for o in out)
+
+
+def test_keyboard_interrupt_during_bang_stays_in_repl(monkeypatch):
+    def fake_run_streaming(command, cwd, on_output, timeout=None):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr("assistant.cli.run_streaming", fake_run_streaming)
+    session = FakeSession([])
+    lines = iter(["!sleep 100", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, None,
+               lambda _t: None)
+    assert any("to'xtatildi" in o.lower() for o in out)

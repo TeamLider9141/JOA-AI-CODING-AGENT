@@ -136,6 +136,11 @@ and can Ctrl-C. The agent's own `run_cmd` tool also streams live now
 (via `ToolContext.output_sink`) instead of going silent until a
 long-running command finishes.
 
+Ctrl-C stops whatever's currently running — a streaming answer, the
+agent loop, or a `!command` — without leaving the REPL; it's caught
+around each of those, prints a short "stopped" notice, and returns to
+the `joa>` prompt. Only `exit`/`quit`/Ctrl-D end the session itself.
+
 In a real terminal, typing `/` pops a live completion dropdown
 (prompt_toolkit): suggestions filter as you type, Tab/arrows select.
 Piped/scripted stdin falls back to plain `input()` automatically, so

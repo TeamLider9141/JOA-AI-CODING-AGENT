@@ -391,7 +391,8 @@ def _repl_loop(session, read_line, echo, embed_client, echo_token) -> None:
     without a live model.
     """
     echo("joa session — type 'exit' or Ctrl-D to quit "
-         "('/' — buyruqlar, '!' — shell buyrug'i)")
+         "('/' — buyruqlar, '!' — shell buyrug'i, Ctrl-C — joriy amalni "
+         "to'xtatish)")
     while True:
         try:
             line = read_line()
@@ -419,7 +420,10 @@ def _repl_loop(session, read_line, echo, embed_client, echo_token) -> None:
                 echo("Bo'sh buyruq. Masalan: "
                      "!ollama pull qwen2.5-coder:0.5b")
             else:
-                _run_bang(session, command, echo, echo_token)
+                try:
+                    _run_bang(session, command, echo, echo_token)
+                except KeyboardInterrupt:
+                    echo("\n⏹ To'xtatildi.")
             continue
         start = time.perf_counter()
         try:
@@ -435,6 +439,9 @@ def _repl_loop(session, read_line, echo, embed_client, echo_token) -> None:
             echo(str(exc))
             if isinstance(exc, GeminiError):
                 echo("/joamodel bilan Ollama modeliga qayting.")
+            continue
+        except KeyboardInterrupt:
+            echo("\n⏹ To'xtatildi.")
             continue
 
 

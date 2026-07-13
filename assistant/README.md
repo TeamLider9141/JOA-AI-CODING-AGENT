@@ -95,7 +95,10 @@ Then, from any indexed repo:
 The first time `joa` runs in a given directory (interactive terminal
 only), it shows a Claude Code-style workspace-trust prompt before
 touching anything — accept once and that directory is remembered in
-`~/.config/joa/trusted_dirs.json`, no more prompts for it.
+`~/.config/joa/trusted_dirs.json`, no more prompts for it. If the
+directory hasn't been indexed yet, `joa` offers to index it right there
+(interactive only) instead of just erroring — declining, or running
+non-interactively, falls back to the old `No index found` message.
 
 Each line is handled by the coding agent (read/write/run/search, with writes
 and commands confirmed), and the conversation carries across turns so

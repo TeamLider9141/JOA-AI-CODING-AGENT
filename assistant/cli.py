@@ -93,6 +93,25 @@ def _require_index(data_dir: Path) -> None:
         raise typer.Exit(1)
 
 
+def _ensure_indexed(repo: Path, data_dir: Path, embed_client, echo,
+                    confirm) -> bool:
+    """If `repo` has no index yet, ask (via `confirm`) whether to build
+    one now. Returns True once an index exists (already did, or just
+    built), False if the user declined or the build itself failed."""
+    if (data_dir / "bm25.json").exists():
+        return True
+    if not confirm(f"'{repo}' indekslanmagan. Hozir indekslaymanmi?"):
+        return False
+    echo(f"Indekslanmoqda: {repo} ...")
+    try:
+        n = build_index(repo, data_dir, embed_client.embed)
+    except (OllamaError, ValueError) as exc:
+        echo(str(exc))
+        return False
+    echo(f"✓ Indekslandi: {n} chunk")
+    return True
+
+
 def _load_trusted(trust_path: Path = config.TRUST_FILE) -> set[str]:
     if not trust_path.is_file():
         return set()
@@ -410,8 +429,16 @@ def repl(
         if not _ensure_trusted(repo, lambda: input(""), typer.echo):
             raise typer.Exit(0)
     data_dir = _data_dir(repo)
-    _require_index(data_dir)
     embed_client = OllamaClient()
+    if sys.stdin.isatty():
+        if not _ensure_indexed(repo, data_dir, embed_client, typer.echo,
+                               typer.confirm):
+            typer.echo(
+                "No index found. Run first: "
+                "python -m assistant.cli index <repo>", err=True)
+            raise typer.Exit(1)
+    else:
+        _require_index(data_dir)
     try:
         chat_client = _chat_client(backend)
     except (OllamaError, GeminiError) as exc:

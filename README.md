@@ -32,7 +32,9 @@ joa
 
 `joa` yangi papkada birinchi marta ochilganda Claude Code'dagidek
 workspace-trust ekrani chiqadi — bir marta tasdiqlaysiz, keyin
-o'sha papka uchun so'ramaydi.
+o'sha papka uchun so'ramaydi. Papka hali indekslanmagan bo'lsa, shu yerda
+hoziroq indekslashni ham taklif qiladi (`~` kabi katta/aralash papkalar
+uchun emas — aniq loyiha papkasi uchun mo'ljallangan).
 
 ## Setup (qo'lda, loyihani o'zi ustida ishlash uchun)
 

@@ -169,11 +169,14 @@ def _save_trusted(dirs: set[str],
 
 
 def _ensure_trusted(repo: Path, read_line, echo,
-                    trust_path: Path = config.TRUST_FILE) -> bool:
+                    trust_path: Path = config.TRUST_FILE,
+                    select=None) -> bool:
     """Ask the user to trust `repo` (like Claude Code's workspace-trust
     screen), unless it's already trusted. Returns True to proceed, False
-    to abort. A "1" answer is remembered in `trust_path`; anything else
-    (including EOF) is treated as decline and never saved."""
+    to abort. Interactive terminals get an arrow-key Ha/Yo'q menu (pass
+    `select`, e.g. `_arrow_select`); piped/scripted input falls back to
+    typing "1" (anything else, including EOF, is decline). Only "Ha" /
+    typed "1" is remembered in `trust_path`."""
     resolved = str(repo.resolve())
     trusted = _load_trusted(trust_path)
     if resolved in trusted:
@@ -187,15 +190,20 @@ def _ensure_trusted(repo: Path, read_line, echo,
     echo(" ishonchli loyihami? JOA bu yerda fayllarni o'qiy, tahrirlay")
     echo(" va buyruq bajara oladi.")
     echo("")
-    echo(" 1. Ha, bu papkaga ishonaman")
-    echo(" 2. Yo'q, chiqish")
-    echo("─" * 60)
-    echo("Raqamni tanlang:")
-    try:
-        choice = read_line().strip()
-    except EOFError:
-        return False
-    if choice != "1":
+    if select is not None:
+        echo("─" * 60)
+        trust = _arrow_confirm("Bu papkaga ishonasizmi?", echo, select)
+    else:
+        echo(" 1. Ha, bu papkaga ishonaman")
+        echo(" 2. Yo'q, chiqish")
+        echo("─" * 60)
+        echo("Raqamni tanlang:")
+        try:
+            choice = read_line().strip()
+        except EOFError:
+            return False
+        trust = choice == "1"
+    if not trust:
         return False
     trusted.add(resolved)
     _save_trusted(trusted, trust_path)
@@ -543,8 +551,11 @@ def repl(
 ):
     """Interactive agent session over the repo (defaults to current dir)."""
     typer.secho(JOA_BANNER, fg=typer.colors.BLUE)
-    if sys.stdin.isatty():
-        if not _ensure_trusted(repo, lambda: input(""), typer.echo):
+    interactive = sys.stdin.isatty()
+    select = _arrow_select if interactive else None
+    if interactive:
+        if not _ensure_trusted(repo, lambda: input(""), typer.echo,
+                               select=select):
             raise typer.Exit(0)
     data_dir = _data_dir(repo)
     embed_client = OllamaClient()

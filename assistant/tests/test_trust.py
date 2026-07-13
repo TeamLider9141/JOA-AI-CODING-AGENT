@@ -81,3 +81,59 @@ def test_ensure_trusted_unknown_input_returns_false(tmp_path):
     result = _ensure_trusted(repo, lambda: next(lines), lambda _o: None,
                              trust_path=trust_path)
     assert result is False
+
+
+def _unused_read_line():
+    raise AssertionError("arrow path must not read numeric input")
+
+
+def test_ensure_trusted_arrow_accept_saves_and_returns_true(tmp_path):
+    trust_path = tmp_path / "trusted_dirs.json"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    result = _ensure_trusted(repo, _unused_read_line, lambda _o: None,
+                             trust_path=trust_path,
+                             select=lambda options, current: 0)
+
+    assert result is True
+    assert str(repo.resolve()) in _load_trusted(trust_path)
+
+
+def test_ensure_trusted_arrow_decline_returns_false_and_does_not_save(tmp_path):
+    trust_path = tmp_path / "trusted_dirs.json"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    result = _ensure_trusted(repo, _unused_read_line, lambda _o: None,
+                             trust_path=trust_path,
+                             select=lambda options, current: 1)
+
+    assert result is False
+    assert _load_trusted(trust_path) == set()
+
+
+def test_ensure_trusted_arrow_cancel_returns_false(tmp_path):
+    trust_path = tmp_path / "trusted_dirs.json"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    result = _ensure_trusted(repo, _unused_read_line, lambda _o: None,
+                             trust_path=trust_path,
+                             select=lambda options, current: None)
+
+    assert result is False
+
+
+def test_ensure_trusted_arrow_skips_prompt_for_known_dir(tmp_path):
+    trust_path = tmp_path / "trusted_dirs.json"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _save_trusted({str(repo.resolve())}, trust_path)
+
+    def boom_select(options, current):
+        raise AssertionError("should not prompt for an already-trusted dir")
+
+    result = _ensure_trusted(repo, _unused_read_line, lambda _o: None,
+                             trust_path=trust_path, select=boom_select)
+    assert result is True

@@ -1,6 +1,8 @@
 import pytest
 
-from assistant.indexer.pipeline import build_index, search_index
+from assistant.indexer.pipeline import (
+    build_bm25_index, build_index, build_vector_index, search_index,
+)
 from assistant.llm.ollama_client import OllamaError
 
 
@@ -64,3 +66,42 @@ def test_ollama_error_aborts_build(tmp_path):
 
     with pytest.raises(OllamaError):
         build_index(repo, tmp_path / "data", broken_embedder)
+
+
+def test_build_bm25_index_creates_bm25_only(tmp_path):
+    repo = make_repo(tmp_path)
+    data = tmp_path / "data"
+
+    n = build_bm25_index(repo, data)
+
+    assert n >= 2
+    assert (data / "bm25.json").exists()
+    assert not (data / "qdrant").exists()
+
+
+def test_build_bm25_index_empty_repo_raises(tmp_path):
+    repo = tmp_path / "empty"
+    repo.mkdir()
+    with pytest.raises(ValueError, match="no indexable chunks"):
+        build_bm25_index(repo, tmp_path / "data")
+
+
+def test_build_vector_index_creates_qdrant_only(tmp_path):
+    repo = make_repo(tmp_path)
+    data = tmp_path / "data"
+
+    n = build_vector_index(repo, data, fake_embedder)
+
+    assert n >= 2
+    assert (data / "qdrant").is_dir()
+    assert not (data / "bm25.json").exists()
+
+
+def test_build_vector_index_respects_qdrant_dirname(tmp_path):
+    repo = make_repo(tmp_path)
+    data = tmp_path / "data"
+
+    build_vector_index(repo, data, fake_embedder, qdrant_dirname="qdrant.new")
+
+    assert (data / "qdrant.new").is_dir()
+    assert not (data / "qdrant").exists()

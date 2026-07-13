@@ -189,19 +189,25 @@ def _build_vector_background(repo: Path, data_dir: Path, embed_client,
     `_maybe_start_vector_background`. Builds into a temp directory first
     (embedded Qdrant only allows one live client per path, and the
     foreground `search_index()` may be reading the live "qdrant"
-    directory concurrently) then atomically swaps it in on success."""
+    directory concurrently) then atomically swaps it in on success. The
+    swap renames the old directory aside before renaming the new one in,
+    so `data_dir / "qdrant"` is never momentarily missing — a concurrent
+    search must never see a gap where the live index doesn't exist."""
     tmp_dirname = "qdrant.new"
     try:
         build_vector_index(repo, data_dir, embed_client.embed,
                            qdrant_dirname=tmp_dirname)
-    except OllamaError as exc:
+    except (OllamaError, ValueError, OSError) as exc:
         echo(f"Semantik indekslash muvaffaqiyatsiz bo'ldi: {exc}")
         shutil.rmtree(data_dir / tmp_dirname, ignore_errors=True)
         return
     final_path = data_dir / "qdrant"
     if final_path.exists():
-        shutil.rmtree(final_path)
+        old_path = data_dir / "qdrant.old"
+        shutil.rmtree(old_path, ignore_errors=True)
+        os.replace(final_path, old_path)
     os.replace(data_dir / tmp_dirname, final_path)
+    shutil.rmtree(data_dir / "qdrant.old", ignore_errors=True)
     save_manifest(data_dir, fingerprint)
     echo("✓ Semantik qidiruv ham tayyor.")
 

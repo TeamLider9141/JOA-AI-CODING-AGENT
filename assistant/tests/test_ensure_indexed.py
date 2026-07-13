@@ -268,3 +268,54 @@ def test_build_vector_background_ollama_failure_leaves_no_qdrant_dir(
     assert not (data_dir / "qdrant").exists()
     assert not (data_dir / "qdrant.new").exists()
     assert any("ollama is down" in o.lower() for o in out)
+
+
+def test_build_vector_background_replaces_existing_qdrant_dir(tmp_path):
+    from assistant.cli import _build_vector_background
+    from assistant.indexer.manifest import repo_fingerprint
+
+    repo = tmp_path / "repo"
+    data_dir = tmp_path / "data"
+    repo.mkdir()
+    (repo / "a.py").write_text("def f():\n    return 1\n")
+
+    old_qdrant = data_dir / "qdrant"
+    old_qdrant.mkdir(parents=True)
+    (old_qdrant / "stale-marker.txt").write_text("old index")
+
+    class RealisticEmbedClient:
+        def embed(self, texts):
+            return [[1.0, 2.0, 3.0] for _ in texts]
+
+    out = []
+    fingerprint = repo_fingerprint(repo)
+
+    _build_vector_background(repo, data_dir, RealisticEmbedClient(),
+                             fingerprint, out.append)
+
+    assert (data_dir / "qdrant").is_dir()
+    assert not (data_dir / "qdrant" / "stale-marker.txt").exists()
+    assert not (data_dir / "qdrant.old").exists()
+    assert not (data_dir / "qdrant.new").exists()
+
+
+def test_build_vector_background_value_error_leaves_no_qdrant_dir(tmp_path):
+    from assistant.cli import _build_vector_background
+
+    repo = tmp_path / "repo"
+    data_dir = tmp_path / "data"
+    repo.mkdir()
+    (repo / "a.py").write_text("def f():\n    return 1\n")
+    data_dir.mkdir()
+    out = []
+
+    class AllBatchesFailEmbedClient:
+        def embed(self, texts):
+            raise RuntimeError("simulated non-Ollama embedding failure")
+
+    _build_vector_background(repo, data_dir, AllBatchesFailEmbedClient(),
+                             {}, out.append)
+
+    assert not (data_dir / "qdrant").exists()
+    assert not (data_dir / "qdrant.new").exists()
+    assert any("muvaffaqiyatsiz" in o.lower() for o in out)

@@ -101,12 +101,13 @@ def _ensure_indexed(repo: Path, data_dir: Path, embed_client, echo,
     if (data_dir / "bm25.json").exists():
         return True
     if not confirm(f"'{repo}' indekslanmagan. Hozir indekslaymanmi?"):
+        echo("No index found. Run first: python -m assistant.cli index <repo>")
         return False
     echo(f"Indekslanmoqda: {repo} ...")
     try:
         n = build_index(repo, data_dir, embed_client.embed)
     except (OllamaError, ValueError) as exc:
-        echo(str(exc))
+        echo(f"Indekslash muvaffaqiyatsiz bo'ldi: {exc}")
         return False
     echo(f"✓ Indekslandi: {n} chunk")
     return True
@@ -433,9 +434,6 @@ def repl(
     if sys.stdin.isatty():
         if not _ensure_indexed(repo, data_dir, embed_client, typer.echo,
                                typer.confirm):
-            typer.echo(
-                "No index found. Run first: "
-                "python -m assistant.cli index <repo>", err=True)
             raise typer.Exit(1)
     else:
         _require_index(data_dir)

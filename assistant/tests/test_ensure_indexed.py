@@ -25,11 +25,13 @@ def test_ensure_indexed_declined_returns_false_without_indexing(tmp_path):
     repo = tmp_path / "repo"
     data_dir = tmp_path / "data"
     repo.mkdir()
+    out = []
 
     result = _ensure_indexed(repo, data_dir, FakeEmbedClient(),
-                             lambda _o: None, lambda _msg: False)
+                             out.append, lambda _msg: False)
     assert result is False
     assert not (data_dir / "bm25.json").exists()
+    assert any("no index found" in o.lower() for o in out)
 
 
 def test_ensure_indexed_accepted_builds_index_and_returns_true(tmp_path):
@@ -52,8 +54,12 @@ def test_ensure_indexed_build_failure_returns_false(tmp_path):
     data_dir = tmp_path / "data"
     repo.mkdir()
     # no indexable files in repo -> build_index raises ValueError
+    out = []
 
     result = _ensure_indexed(repo, data_dir, FakeEmbedClient(),
-                             lambda _o: None, lambda _msg: True)
+                             out.append, lambda _msg: True)
     assert result is False
     assert not (data_dir / "bm25.json").exists()
+    # the real failure reason is shown, not the generic decline message
+    assert any("no indexable chunks" in o.lower() for o in out)
+    assert not any("no index found" in o.lower() for o in out)

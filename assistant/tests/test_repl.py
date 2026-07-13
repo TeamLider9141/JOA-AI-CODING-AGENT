@@ -63,6 +63,15 @@ def test_repl_loop_sends_lines_and_exits_on_exit():
     assert any("answer one" in o for o in out)
 
 
+def test_repl_loop_cleans_latex_in_agent_answer():
+    session = FakeSession([r"\(\alpha + \beta\)"])
+    lines = iter(["do a thing", "exit"])
+    out = []
+    _repl_loop(session, lambda: next(lines), out.append, None, lambda _t: None)
+    assert any("α + β" in o for o in out)
+    assert not any(r"\alpha" in o for o in out)
+
+
 def test_repl_loop_skips_blank_lines():
     session = FakeSession(["ans"])
     lines = iter(["", "   ", "real task", "quit"])

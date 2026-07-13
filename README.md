@@ -101,9 +101,17 @@ javob berganini ko'rish uchun footer'da ham model nomi chiqadi:
 `(2.3s · qwen2.5-coder:0.5b)`.
 
 Oddiy savollar (masalan "bu funksiya nima qiladi?") endi agent
-protokolisiz, bitta streaming chaqiruv bilan javob oladi — javob token
-oqib chiqadi. Fayl/buyruq talab qiladigan topshiriqlar avvalgidek to'liq
-agent orqali bajariladi (model o'zi ajratadi).
+protokolisiz, bitta chaqiruv bilan javob oladi (to'liq javob tayyor
+bo'lgach chiqadi — LaTeX formulalar bo'lsa, avval Unicode'ga tozalanadi:
+`\alpha` → α, `\frac{1}{2}` → 1/2 va h.k). Fayl/buyruq talab qiladigan
+topshiriqlar avvalgidek to'liq agent orqali bajariladi (model o'zi
+ajratadi).
+
+Kichik modellar (`0.5b`/`1.5b`) kod savollarida yaxshi, lekin umumiy
+bilim/matematik hisob-kitobda ishonchsiz bo'lishi mumkin (xato javobni
+ham ishonch bilan aytib yuborishi mumkin). Murakkab/nostandart savollar
+uchun `/joamodel` bilan kattaroq modelga (`7b`) yoki Gemini'ga o'tish
+tavsiya qilinadi.
 
 Boshqa slash-buyruqlar: `/` yoki `/help` — buyruqlar ro'yxati, `/clear` —
 suhbat kontekstini tozalash (tarix 0 dan boshlanadi). `/` bilan boshlangan

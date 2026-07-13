@@ -18,6 +18,7 @@ from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.styles import Style
 
 from assistant import config
+from assistant.latex_clean import clean_latex
 from assistant.indexer.manifest import (
     load_manifest, repo_fingerprint, save_manifest,
 )
@@ -66,7 +67,8 @@ FAST_SYSTEM_PROMPT = (
     "repository. If answering would require reading or writing files, "
     "running commands, or searching the codebase, reply with exactly "
     "ESCALATE and nothing else. Otherwise answer the question directly "
-    "and concisely."
+    "and concisely. If a calculation or fact isn't something you're "
+    "confident about, say so instead of stating a guess as if certain."
 )
 
 _SNIFF_LEN = len("ESCALATE")
@@ -94,12 +96,11 @@ def _fast_answer(session, line, echo_token):
         return None
     if not buffer.strip():
         return None
-    echo_token(buffer)
     parts = [buffer]
     for chunk in stream:
-        echo_token(chunk)
         parts.append(chunk)
     answer = "".join(parts)
+    echo_token(clean_latex(answer))
     session.messages.append({"role": "user", "content": line})
     session.messages.append({"role": "assistant", "content": answer})
     return answer
@@ -589,7 +590,8 @@ def _repl_loop(session, read_line, echo, embed_client, echo_token,
             if answer is None:
                 answer = session.send(stripped)
                 elapsed = time.perf_counter() - start
-                echo(f"{answer}\n({elapsed:.1f}s · {_model_label(session.client)})")
+                echo(f"{clean_latex(answer)}\n"
+                     f"({elapsed:.1f}s · {_model_label(session.client)})")
             else:
                 elapsed = time.perf_counter() - start
                 echo(f"\n({elapsed:.1f}s · {_model_label(session.client)})")

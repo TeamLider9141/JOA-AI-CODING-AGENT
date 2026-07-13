@@ -95,3 +95,29 @@ def test_empty_stream_returns_none():
 
     assert _fast_answer(session, "anything", lambda _t: None) is None
     assert len(session.messages) == 1
+
+
+def test_answer_is_echoed_exactly_once_not_per_chunk():
+    """The fast path used to call echo_token once per streamed chunk
+    (true live streaming); it now buffers the full answer and emits it
+    once, so LaTeX cleanup can run on the complete text."""
+    client = FakeStreamClient(["one ", "two ", "three"])
+    session = FakeSession(client)
+    calls = []
+
+    _fast_answer(session, "count", calls.append)
+
+    assert calls == ["one two three"]
+
+
+def test_latex_in_answer_is_cleaned_before_echoing():
+    client = FakeStreamClient([r"\alpha + \beta = \gamma"])
+    session = FakeSession(client)
+    calls = []
+
+    answer = _fast_answer(session, "greek", calls.append)
+
+    assert calls == ["α + β = γ"]
+    # history keeps the raw (uncleaned) text — cleanup is a display concern
+    assert answer == r"\alpha + \beta = \gamma"
+    assert session.messages[-1]["content"] == r"\alpha + \beta = \gamma"

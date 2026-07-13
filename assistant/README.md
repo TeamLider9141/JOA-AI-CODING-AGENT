@@ -143,13 +143,29 @@ list is colorized (Ollama models cyan, `gemini` magenta) and the currently
 active model is marked green with a `(joriy)` suffix — colors auto-disable
 on piped/non-terminal output.
 
-Plain questions take a fast path: one direct streaming chat call (tokens
-render as they arrive) instead of the full agent protocol. The model
-routes automatically — if the request needs file/command/search tools it
-replies `ESCALATE` internally and the normal agent loop takes over.
-Session history is capped (`MAX_HISTORY_MESSAGES` in `config.py`) so long
-sessions don't slow down over time. Every reply's timing footer now
-includes which model produced it: `(2.3s · qwen2.5-coder:0.5b)`.
+Plain questions take a fast path: one direct chat call instead of the
+full agent protocol, printed once the full answer is ready (not
+token-by-token — buffering the whole reply first lets LaTeX cleanup run
+on the complete text, see below). The model routes automatically — if
+the request needs file/command/search tools it replies `ESCALATE`
+internally and the normal agent loop takes over. Session history is
+capped (`MAX_HISTORY_MESSAGES` in `config.py`) so long sessions don't
+slow down over time. Every reply's timing footer now includes which
+model produced it: `(2.3s · qwen2.5-coder:0.5b)`.
+
+Both the fast path and the agent's final answer run through
+`clean_latex()` (`assistant/latex_clean.py`) before display — small local
+models often answer math questions in raw LaTeX (`\frac{1}{2}`,
+`\alpha`, `x^2`), which is unreadable escape-sequence soup in a plain
+terminal. It's a best-effort regex-based converter (Greek letters, common
+operators, `\frac{a}{b}` → `a/b`, `^`/`_` → Unicode super/subscript where
+a mapping exists) — it doesn't implement the full LaTeX grammar, and
+unrecognized commands are left as-is rather than risk corrupting the
+text. `FAST_SYSTEM_PROMPT` also nudges the model to flag when it isn't
+confident in a calculation rather than stating a guess as fact — small
+models (`0.5b`/`1.5b`) are tuned for code, not general knowledge or math,
+and can be confidently wrong; switch to a larger model or Gemini via
+`/joamodel` for those questions.
 
 Other slash commands: `/` or `/help` lists every command; `/clear` resets
 the conversation context to zero (keeps only the system prompt). Anything

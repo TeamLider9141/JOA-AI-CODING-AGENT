@@ -1,5 +1,18 @@
 # Joa — Lokal AI Coding Agent
 
+```
+     ██╗ ██████╗  █████╗
+     ██║██╔═══██╗██╔══██╗
+     ██║██║   ██║███████║
+██   ██║██║   ██║██╔══██║
+╚█████╔╝╚██████╔╝██║  ██║
+ ╚════╝  ╚═════╝ ╚═╝  ╚═╝
+JOA — Lokal AI Coding Agent
+```
+
+Terminalda bu banner har doim **ko'k** rangda chiqadi — o'rnatishda
+(`install.sh`) va `joa` REPL har ochilganida.
+
 CPU-only, offline-first kod-yordamchi. Default holatda Ollama orqali lokal
 LLM ishlatadi — cloud API'ga bog'liq emas, kod tashqariga chiqmaydi. Xohlasa,
 tezlik uchun `--backend gemini` bilan Google Gemini'ga ham o'tish mumkin
@@ -68,19 +81,11 @@ yo'q, chunki ular faqat embedding ishlatadi — embedding doim Ollama'da
 qoladi, backend tanlovidan qat'i nazar). Default: `ollama`.
 
 REPL sessiyasi ichida `/joamodel` yozib, o'rnatilgan Ollama modellari
-(masalan `qwen2.5-coder:1.5b`/`3b`/`7b`) yoki Gemini orasida raqam bilan
-almashtirish mumkin — sessiyani qayta ishga tushirmasdan:
-
-```
-joa> /joamodel
-1. qwen2.5-coder:0.5b
-2. qwen2.5-coder:1.5b
-3. qwen2.5-coder:7b (joriy)
-4. gemini
-Raqamni tanlang:
-joa> 1
-✓ Model: qwen2.5-coder:0.5b
-```
+(masalan `qwen2.5-coder:1.5b`/`3b`/`7b`) yoki Gemini orasida almashtirish
+mumkin — sessiyani qayta ishga tushirmasdan. Tanlov raqam kiritish orqali
+emas, Claude Code'dagidek **strelka tugmalari** bilan: ↑/↓ ro'yxat bo'ylab
+yuradi, Enter tanlaydi, Esc/Ctrl-C bekor qiladi. Joriy model boshlanishda
+avtomatik belgilangan bo'ladi.
 
 Ro'yxat rangli (Ollama modellari — moviy, gemini — pushti, joriy model —
 yashil va `(joriy)` belgisi bilan). Har javobdan keyin qaysi model

@@ -540,3 +540,57 @@ def test_keyboard_interrupt_during_bang_stays_in_repl(monkeypatch):
     _repl_loop(session, lambda: next(lines), out.append, None,
                lambda _t: None)
     assert any("to'xtatildi" in o.lower() for o in out)
+
+
+def test_joamodel_uses_injected_select_no_numeric_prompt():
+    """When a `select` callable is supplied (arrow-key mode), /joamodel
+    must never print the "Raqamni tanlang" numeric prompt or read a
+    number from read_line."""
+    session = FakeSession([])
+    embed_client = FakeEmbedClient(["qwen2.5-coder:1.5b", "qwen2.5-coder:3b"])
+    lines = iter(["/joamodel", "exit"])  # no number typed
+    out = []
+    select = lambda options, current_index: 1  # pick index 1 (3b)
+    _repl_loop(session, lambda: next(lines), out.append, embed_client,
+               lambda _t: None, select=select)
+    assert not any("Raqamni tanlang" in o for o in out)
+    assert any("qwen2.5-coder:3b" in o for o in out)
+
+
+def test_joamodel_injected_select_cancel_keeps_current_client():
+    session = FakeSession([])
+    embed_client = FakeEmbedClient(["qwen2.5-coder:1.5b"])
+    lines = iter(["/joamodel", "exit"])
+    select = lambda options, current_index: None  # user pressed Esc
+    original_client = session.client
+    _repl_loop(session, lambda: next(lines), lambda _o: None, embed_client,
+               lambda _t: None, select=select)
+    assert session.client is original_client
+
+
+def test_arrow_select_down_down_enter_picks_third_option():
+    from prompt_toolkit.application import create_app_session
+    from prompt_toolkit.input import create_pipe_input
+    from prompt_toolkit.output import DummyOutput
+
+    from assistant.cli import _arrow_select
+
+    with create_pipe_input() as pipe_input:
+        pipe_input.send_text("\x1b[B\x1b[B\r")  # Down, Down, Enter
+        with create_app_session(input=pipe_input, output=DummyOutput()):
+            result = _arrow_select(["a", "b", "c"], current_index=0)
+    assert result == 2
+
+
+def test_arrow_select_escape_cancels():
+    from prompt_toolkit.application import create_app_session
+    from prompt_toolkit.input import create_pipe_input
+    from prompt_toolkit.output import DummyOutput
+
+    from assistant.cli import _arrow_select
+
+    with create_pipe_input() as pipe_input:
+        pipe_input.send_text("\x1b\x1b")  # Escape
+        with create_app_session(input=pipe_input, output=DummyOutput()):
+            result = _arrow_select(["a", "b", "c"], current_index=0)
+    assert result is None

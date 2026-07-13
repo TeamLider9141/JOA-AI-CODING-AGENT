@@ -14,6 +14,10 @@ deps, and symlinks `bin/joa` into `~/.local/bin/joa` so `joa` works from
 any directory afterward. Re-running the same command updates an existing
 install (`git pull --ff-only`).
 
+Both the installer and every `joa` REPL launch print the same JOA ASCII
+banner in blue (`typer.secho(..., fg=typer.colors.BLUE)` /
+ANSI `\033[34m` in `install.sh`).
+
 ## Setup (manual, for working on this repo itself)
 
     python3 -m venv .venv                      # from repo root
@@ -109,11 +113,16 @@ for the CLI, e.g. `joa ask "how does X work"` or `joa agent "fix the bug"`.
 Mid-session, type `/joamodel` to switch models without restarting: it lists
 whatever Ollama models are actually installed (`ollama pull`ed) plus
 `gemini` as a last option, then swaps the active chat client to whichever
-number you pick. Picking `gemini` without `GEMINI_API_KEY` set just warns
-and leaves the current model in place instead of switching to something
-that would immediately fail. The list is colorized (Ollama models cyan,
-`gemini` magenta) and the currently active model is marked green with a
-`(joriy)` suffix — colors auto-disable on piped/non-terminal output.
+one you pick. In an interactive terminal, picking is done with an inline
+arrow-key menu (Up/Down to move, Enter to select, Esc/Ctrl-C to cancel) —
+no number typing, pre-highlighted on the currently active model. Piped/
+scripted stdin falls back to typing a number instead (same isatty-guard
+pattern as the trust screen and auto-index prompt). Picking `gemini`
+without `GEMINI_API_KEY` set just warns and leaves the current model in
+place instead of switching to something that would immediately fail. The
+list is colorized (Ollama models cyan, `gemini` magenta) and the currently
+active model is marked green with a `(joriy)` suffix — colors auto-disable
+on piped/non-terminal output.
 
 Plain questions take a fast path: one direct streaming chat call (tokens
 render as they arrive) instead of the full agent protocol. The model

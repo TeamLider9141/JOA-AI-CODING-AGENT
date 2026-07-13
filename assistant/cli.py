@@ -6,7 +6,13 @@ from pathlib import Path
 
 import typer
 from prompt_toolkit import PromptSession
+from prompt_toolkit.application import Application
 from prompt_toolkit.completion import Completer, Completion
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.layout import Layout
+from prompt_toolkit.layout.containers import Window
+from prompt_toolkit.layout.controls import FormattedTextControl
+from prompt_toolkit.styles import Style
 
 from assistant import config
 from assistant.indexer.pipeline import build_index, search_index
@@ -23,6 +29,16 @@ class Backend(str, Enum):
 
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
+
+JOA_BANNER = """
+     ██╗ ██████╗  █████╗
+     ██║██╔═══██╗██╔══██╗
+     ██║██║   ██║███████║
+██   ██║██║   ██║██╔══██║
+╚█████╔╝╚██████╔╝██║  ██║
+ ╚════╝  ╚═════╝ ╚═╝  ╚═╝
+JOA — Lokal AI Coding Agent
+"""
 
 
 def _chat_client(backend: Backend):
@@ -281,18 +297,10 @@ def agent(
     typer.echo(answer)
 
 
-def _handle_joamodel(session, embed_client, read_line, echo) -> None:
-    """List installed Ollama models plus "gemini"; switch session.client
-    to whichever the user picks by number. Leaves session.client
-    unchanged on any failure (bad input, EOF, missing Gemini key, or a
-    failure listing Ollama's models)."""
-    try:
-        models = embed_client.list_models()
-    except OllamaError as exc:
-        echo(str(exc))
-        return
-    options = models + ["gemini"]
-    current = _model_label(session.client)
+def _numeric_select(options: list[str], current: str, read_line, echo) -> int | None:
+    """Fallback selector for non-interactive/piped input: prints a
+    numbered, colorized list and reads a number. Returns the chosen
+    zero-based index, or None on bad/empty input or EOF."""
     for i, name in enumerate(options, start=1):
         if name == current:
             label = typer.style(f"{name} (joriy)",
@@ -306,17 +314,86 @@ def _handle_joamodel(session, embed_client, read_line, echo) -> None:
     try:
         choice_line = read_line()
     except EOFError:
-        return
+        return None
     choice = choice_line.strip()
     try:
         index = int(choice)
     except ValueError:
         echo(f"Noto'g'ri tanlov: {choice!r}")
-        return
+        return None
     if not (1 <= index <= len(options)):
         echo(f"Noto'g'ri tanlov: {choice!r}")
+        return None
+    return index - 1
+
+
+def _arrow_select(options: list[str], current_index: int) -> int | None:
+    """Claude Code-style inline arrow-key menu: Up/Down move the
+    highlight, Enter selects, Esc/Ctrl-C cancels. Renders in place
+    (not full-screen) so it fits naturally into the REPL scrollback."""
+    state = {"pos": current_index if 0 <= current_index < len(options) else 0}
+
+    def _render():
+        fragments = []
+        for i, name in enumerate(options):
+            if i == state["pos"]:
+                fragments.append(("class:selected", f"❯ {name}\n"))
+            else:
+                fragments.append(("", f"  {name}\n"))
+        return fragments
+
+    kb = KeyBindings()
+
+    @kb.add("up")
+    def _up(event):
+        state["pos"] = (state["pos"] - 1) % len(options)
+        event.app.invalidate()
+
+    @kb.add("down")
+    def _down(event):
+        state["pos"] = (state["pos"] + 1) % len(options)
+        event.app.invalidate()
+
+    @kb.add("enter")
+    def _enter(event):
+        event.app.exit(result=state["pos"])
+
+    @kb.add("escape")
+    @kb.add("c-c")
+    def _cancel(event):
+        event.app.exit(result=None)
+
+    control = FormattedTextControl(_render, focusable=True)
+    layout = Layout(Window(content=control))
+    style = Style.from_dict({"selected": "reverse"})
+    app = Application(layout=layout, key_bindings=kb, style=style,
+                       full_screen=False)
+    return app.run()
+
+
+def _handle_joamodel(session, embed_client, read_line, echo,
+                     select=None) -> None:
+    """List installed Ollama models plus "gemini"; switch session.client
+    to whichever the user picks. Interactive terminals get an arrow-key
+    menu (`select` defaults to `_arrow_select` from `repl()`); piped/
+    scripted input falls back to typing a number. Leaves session.client
+    unchanged on any failure (bad input, EOF, missing Gemini key, or a
+    failure listing Ollama's models)."""
+    try:
+        models = embed_client.list_models()
+    except OllamaError as exc:
+        echo(str(exc))
         return
-    selected = options[index - 1]
+    options = models + ["gemini"]
+    current = _model_label(session.client)
+    if select is None:
+        index = _numeric_select(options, current, read_line, echo)
+    else:
+        current_index = options.index(current) if current in options else 0
+        index = select(options, current_index)
+    if index is None:
+        return
+    selected = options[index]
     if selected == "gemini":
         if not config.GEMINI_API_KEY:
             echo("GEMINI_API_KEY .env'da topilmadi. Model o'zgartirilmadi.")
@@ -377,7 +454,8 @@ def _run_bang(session, command, echo, echo_token) -> None:
     echo(f"\n(exit code: {returncode})")
 
 
-def _repl_loop(session, read_line, echo, embed_client, echo_token) -> None:
+def _repl_loop(session, read_line, echo, embed_client, echo_token,
+               select=None) -> None:
     """Drive an AgentSession from a line source until exit/EOF.
 
     `read_line()` returns the next input line (raising EOFError at end of
@@ -405,7 +483,8 @@ def _repl_loop(session, read_line, echo, embed_client, echo_token) -> None:
             continue
         if stripped.startswith("/"):
             if stripped == "/joamodel":
-                _handle_joamodel(session, embed_client, read_line, echo)
+                _handle_joamodel(session, embed_client, read_line, echo,
+                                 select=select)
             elif stripped == "/clear":
                 session.messages = session.messages[:1]
                 echo("✓ Suhbat tozalandi — kontekst 0 dan boshlanadi.")
@@ -454,6 +533,7 @@ def repl(
         help="ollama | gemini (gemini needs GEMINI_API_KEY in .env)"),
 ):
     """Interactive agent session over the repo (defaults to current dir)."""
+    typer.secho(JOA_BANNER, fg=typer.colors.BLUE)
     if sys.stdin.isatty():
         if not _ensure_trusted(repo, lambda: input(""), typer.echo):
             raise typer.Exit(0)
@@ -486,8 +566,9 @@ def repl(
     else:
         # piped/scripted input: plain input(), no interactive dropdown
         read_line = lambda: input("joa> ")  # noqa: E731
+    select = _arrow_select if sys.stdin.isatty() else None
     _repl_loop(session, read_line, typer.echo, embed_client,
-               lambda t: typer.echo(t, nl=False))
+               lambda t: typer.echo(t, nl=False), select=select)
 
 
 def build_prompt(question: str,

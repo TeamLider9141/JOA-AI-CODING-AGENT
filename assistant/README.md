@@ -98,11 +98,30 @@ Then, from any indexed repo:
 
 The first time `joa` runs in a given directory (interactive terminal
 only), it shows a Claude Code-style workspace-trust prompt before
-touching anything — accept once and that directory is remembered in
-`~/.config/joa/trusted_dirs.json`, no more prompts for it. If the
-directory hasn't been indexed yet, `joa` offers to index it right there
-(interactive only) instead of just erroring — declining, or running
-non-interactively, falls back to the old `No index found` message.
+touching anything — an arrow-key Ha/Yo'q menu (Up/Down/Enter, same
+`_arrow_select` widget `/joamodel` uses) rather than typed input. Accept
+once and that directory is remembered in `~/.config/joa/trusted_dirs.json`,
+no more prompts for it. If the directory hasn't been indexed yet, `joa`
+offers to index it right there (same arrow-key menu) instead of just
+erroring — declining, or running non-interactively, falls back to the old
+`No index found` message (and non-interactive stdin falls back to typed
+"1"/number input throughout, so piped/scripted use is unaffected).
+
+Indexing itself is two-phase: a BM25 (lexical) index builds synchronously
+(sub-second — no embedding call, so it's unaffected by Ollama's speed) and
+the REPL is usable immediately after; a vector (semantic) index then
+builds in a background daemon thread using the same embedder. Search
+transparently falls back to BM25-only until the vector index is ready,
+then upgrades to full hybrid RRF search automatically — no user action
+needed. A fingerprint of the repo's files (path, mtime, size) is saved
+once the vector build succeeds (`vector_manifest.json` in the repo's data
+directory); subsequent `joa` launches skip rebuilding the vector index
+entirely when nothing has changed. The background build writes into a
+temp `qdrant.new` directory and atomically swaps it in on success, so a
+concurrent search against the live index is never disturbed. The
+standalone `joa index <repo>` command is unaffected — it still blocks
+until both BM25 and vector indexes are fully built, which is the point
+for scripted/CI use.
 
 Each line is handled by the coding agent (read/write/run/search, with writes
 and commands confirmed), and the conversation carries across turns so

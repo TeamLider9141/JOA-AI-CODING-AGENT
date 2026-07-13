@@ -44,10 +44,18 @@ joa
 ```
 
 `joa` yangi papkada birinchi marta ochilganda Claude Code'dagidek
-workspace-trust ekrani chiqadi — bir marta tasdiqlaysiz, keyin
-o'sha papka uchun so'ramaydi. Papka hali indekslanmagan bo'lsa, shu yerda
-hoziroq indekslashni ham taklif qiladi (`~` kabi katta/aralash papkalar
+workspace-trust ekrani chiqadi — strelka tugmalari bilan (↑/↓, Enter)
+"Ha"/"Yo'q" tanlaysiz, keyin o'sha papka uchun qayta so'ramaydi. Papka
+hali indekslanmagan bo'lsa, shu yerda hoziroq indekslashni ham taklif
+qiladi — xuddi shu arrow-key menyu bilan (`~` kabi katta/aralash papkalar
 uchun emas — aniq loyiha papkasi uchun mo'ljallangan).
+
+Indekslash ikki bosqichda ishlaydi: **leksik (BM25) qism darhol** quriladi
+(taxminan 0.1s — REPL shu zahoti ishlatishga tayyor), **semantik (vektor)
+qism esa fonda**, sizga xalaqit bermay. Fon tugagach
+`✓ Semantik qidiruv ham tayyor.` deb xabar chiqadi — o'shangacha qidiruv
+faqat leksik (aniq so'z) ishlaydi. Fayllar o'zgarmagan bo'lsa, keyingi
+`joa` ochilishlarida semantik qism qayta qurilmaydi (avtomatik aniqlanadi).
 
 ## Setup (qo'lda, loyihani o'zi ustida ishlash uchun)
 

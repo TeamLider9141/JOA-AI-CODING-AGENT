@@ -22,12 +22,24 @@ Python, Typer (CLI), Ollama (qwen2.5-coder, nomic-embed-text), Gemini API
 (ixtiyoriy ikkinchi chat backend), Qdrant, rank_bm25, tree-sitter, pytest
 (TDD, 120+ test)
 
-## Setup
+## Tezkor o'rnatish (Linux)
+
+```
+curl -fsSL https://raw.githubusercontent.com/TeamLider9141/JOA-AI-CODING-AGENT/main/install.sh | bash
+ollama pull qwen2.5-coder:0.5b     # eng tez/yengil; yoki :1.5b / :3b / :7b
+joa
+```
+
+`joa` yangi papkada birinchi marta ochilganda Claude Code'dagidek
+workspace-trust ekrani chiqadi — bir marta tasdiqlaysiz, keyin
+o'sha papka uchun so'ramaydi.
+
+## Setup (qo'lda, loyihani o'zi ustida ishlash uchun)
 
 ```
 python3 -m venv .venv
 .venv/bin/pip install -r assistant/requirements.txt
-ollama pull qwen2.5-coder:7b       # yoki :3b / :1.5b — tezroq, CPU uchun yengilroq
+ollama pull qwen2.5-coder:0.5b     # eng tez/yengil; yoki :1.5b / :3b / :7b
 ollama pull nomic-embed-text
 ```
 
@@ -59,13 +71,19 @@ almashtirish mumkin — sessiyani qayta ishga tushirmasdan:
 
 ```
 joa> /joamodel
-1. qwen2.5-coder:1.5b
-2. qwen2.5-coder:7b
-3. gemini
+1. qwen2.5-coder:0.5b
+2. qwen2.5-coder:1.5b
+3. qwen2.5-coder:7b (joriy)
+4. gemini
 Raqamni tanlang:
 joa> 1
-✓ Model: qwen2.5-coder:1.5b
+✓ Model: qwen2.5-coder:0.5b
 ```
+
+Ro'yxat rangli (Ollama modellari — moviy, gemini — pushti, joriy model —
+yashil va `(joriy)` belgisi bilan). Har javobdan keyin qaysi model
+javob berganini ko'rish uchun footer'da ham model nomi chiqadi:
+`(2.3s · qwen2.5-coder:0.5b)`.
 
 Oddiy savollar (masalan "bu funksiya nima qiladi?") endi agent
 protokolisiz, bitta streaming chaqiruv bilan javob oladi — javob token

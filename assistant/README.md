@@ -5,11 +5,20 @@ BM25 hybrid retrieval (RRF), Ollama for embeddings and chat. Chat can
 optionally run against Gemini instead of Ollama via `--backend gemini` —
 embeddings always stay on Ollama regardless of chat backend.
 
-## Setup
+## Install (Linux, one-liner)
+
+    curl -fsSL https://raw.githubusercontent.com/TeamLider9141/JOA-AI-CODING-AGENT/main/install.sh | bash
+
+Clones into `~/.joa` (or `$JOA_HOME`), creates its own venv, installs
+deps, and symlinks `bin/joa` into `~/.local/bin/joa` so `joa` works from
+any directory afterward. Re-running the same command updates an existing
+install (`git pull --ff-only`).
+
+## Setup (manual, for working on this repo itself)
 
     python3 -m venv .venv                      # from repo root
     .venv/bin/pip install -r assistant/requirements.txt
-    ollama pull qwen2.5-coder:7b
+    ollama pull qwen2.5-coder:0.5b              # fastest/lightest; or :1.5b / :3b / :7b
     ollama pull nomic-embed-text
 
 Optional — to use `--backend gemini`:
@@ -83,6 +92,11 @@ Then, from any indexed repo:
     joa> now commit that change
     joa> exit
 
+The first time `joa` runs in a given directory (interactive terminal
+only), it shows a Claude Code-style workspace-trust prompt before
+touching anything — accept once and that directory is remembered in
+`~/.config/joa/trusted_dirs.json`, no more prompts for it.
+
 Each line is handled by the coding agent (read/write/run/search, with writes
 and commands confirmed), and the conversation carries across turns so
 follow-ups remember earlier context. `joa <args>` still works as a short form
@@ -94,14 +108,17 @@ whatever Ollama models are actually installed (`ollama pull`ed) plus
 `gemini` as a last option, then swaps the active chat client to whichever
 number you pick. Picking `gemini` without `GEMINI_API_KEY` set just warns
 and leaves the current model in place instead of switching to something
-that would immediately fail.
+that would immediately fail. The list is colorized (Ollama models cyan,
+`gemini` magenta) and the currently active model is marked green with a
+`(joriy)` suffix — colors auto-disable on piped/non-terminal output.
 
 Plain questions take a fast path: one direct streaming chat call (tokens
 render as they arrive) instead of the full agent protocol. The model
 routes automatically — if the request needs file/command/search tools it
 replies `ESCALATE` internally and the normal agent loop takes over.
 Session history is capped (`MAX_HISTORY_MESSAGES` in `config.py`) so long
-sessions don't slow down over time.
+sessions don't slow down over time. Every reply's timing footer now
+includes which model produced it: `(2.3s · qwen2.5-coder:0.5b)`.
 
 Other slash commands: `/` or `/help` lists every command; `/clear` resets
 the conversation context to zero (keeps only the system prompt). Anything

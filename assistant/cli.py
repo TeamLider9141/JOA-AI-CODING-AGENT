@@ -1,5 +1,8 @@
 import json
+import os
+import shutil
 import sys
+import threading
 import time
 from enum import Enum
 from pathlib import Path
@@ -15,7 +18,12 @@ from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.styles import Style
 
 from assistant import config
-from assistant.indexer.pipeline import build_index, search_index
+from assistant.indexer.manifest import (
+    load_manifest, repo_fingerprint, save_manifest,
+)
+from assistant.indexer.pipeline import (
+    build_bm25_index, build_index, build_vector_index, search_index,
+)
 from assistant.llm.ollama_client import OllamaClient, OllamaError
 from assistant.llm.gemini_client import GeminiClient, GeminiError
 from assistant.agent.runner import AgentSession, run_agent
@@ -110,18 +118,28 @@ def _require_index(data_dir: Path) -> None:
 
 
 def _ensure_indexed(repo: Path, data_dir: Path, embed_client, echo,
-                    confirm) -> bool:
-    """If `repo` has no index yet, ask (via `confirm`) whether to build
-    one now. Returns True once an index exists (already did, or just
-    built), False if the user declined or the build itself failed."""
+                    confirm, start_vector_background=None) -> bool:
+    """If `repo` has no BM25 index yet, ask (via `confirm`) whether to
+    build one now. BM25 builds synchronously (sub-second — no embedding
+    call). The vector (semantic) index is always given a chance to start
+    afterward via `start_vector_background(repo, data_dir, embed_client,
+    echo)` — production callers get `_maybe_start_vector_background` (a
+    real background thread, skipped if the repo is unchanged since the
+    last build); tests inject a no-op/fake so no real thread or embedder
+    call ever happens in the unit test suite. Returns True once a BM25
+    index exists (already did, or just built), False if the user
+    declined or the BM25 build itself failed."""
+    if start_vector_background is None:
+        start_vector_background = _maybe_start_vector_background
     if (data_dir / "bm25.json").exists():
+        start_vector_background(repo, data_dir, embed_client, echo)
         return True
     if not confirm(f"'{repo}' indekslanmagan. Hozir indekslaymanmi?"):
         echo("No index found. Run first: python -m assistant.cli index <repo>")
         return False
     echo(f"Indekslanmoqda: {repo} ...")
     try:
-        n = build_index(repo, data_dir, embed_client.embed)
+        n = build_bm25_index(repo, data_dir)
     except ValueError as exc:
         if "no indexable chunks found" not in str(exc):
             echo(f"Indekslash muvaffaqiyatsiz bo'ldi: {exc}")
@@ -139,15 +157,53 @@ def _ensure_indexed(repo: Path, data_dir: Path, embed_client, echo,
             "mumkin.\n")
         echo(f"Papka bo'sh edi — {placeholder.name} avtomatik yaratildi.")
         try:
-            n = build_index(repo, data_dir, embed_client.embed)
-        except (OllamaError, ValueError) as retry_exc:
+            n = build_bm25_index(repo, data_dir)
+        except ValueError as retry_exc:
             echo(f"Indekslash muvaffaqiyatsiz bo'ldi: {retry_exc}")
             return False
-    except OllamaError as exc:
-        echo(f"Indekslash muvaffaqiyatsiz bo'ldi: {exc}")
-        return False
-    echo(f"✓ Indekslandi: {n} chunk")
+    echo(f"✓ Indekslandi (BM25): {n} chunk")
+    start_vector_background(repo, data_dir, embed_client, echo)
     return True
+
+
+def _maybe_start_vector_background(repo: Path, data_dir: Path, embed_client,
+                                   echo) -> None:
+    """Kick off vector (semantic) indexing in a background daemon thread,
+    unless the repo is unchanged since the last successful vector build
+    (per the saved fingerprint manifest) — in which case do nothing.
+    Never blocks the caller either way."""
+    fingerprint = repo_fingerprint(repo)
+    if (load_manifest(data_dir) == fingerprint
+            and (data_dir / "qdrant").is_dir()):
+        return
+    threading.Thread(
+        target=_build_vector_background,
+        args=(repo, data_dir, embed_client, fingerprint, echo),
+        daemon=True,
+    ).start()
+
+
+def _build_vector_background(repo: Path, data_dir: Path, embed_client,
+                             fingerprint: dict, echo) -> None:
+    """Runs on the background thread started by
+    `_maybe_start_vector_background`. Builds into a temp directory first
+    (embedded Qdrant only allows one live client per path, and the
+    foreground `search_index()` may be reading the live "qdrant"
+    directory concurrently) then atomically swaps it in on success."""
+    tmp_dirname = "qdrant.new"
+    try:
+        build_vector_index(repo, data_dir, embed_client.embed,
+                           qdrant_dirname=tmp_dirname)
+    except OllamaError as exc:
+        echo(f"Semantik indekslash muvaffaqiyatsiz bo'ldi: {exc}")
+        shutil.rmtree(data_dir / tmp_dirname, ignore_errors=True)
+        return
+    final_path = data_dir / "qdrant"
+    if final_path.exists():
+        shutil.rmtree(final_path)
+    os.replace(data_dir / tmp_dirname, final_path)
+    save_manifest(data_dir, fingerprint)
+    echo("✓ Semantik qidiruv ham tayyor.")
 
 
 def _load_trusted(trust_path: Path = config.TRUST_FILE) -> set[str]:

@@ -106,7 +106,28 @@ def _ensure_indexed(repo: Path, data_dir: Path, embed_client, echo,
     echo(f"Indekslanmoqda: {repo} ...")
     try:
         n = build_index(repo, data_dir, embed_client.embed)
-    except (OllamaError, ValueError) as exc:
+    except ValueError as exc:
+        if "no indexable chunks found" not in str(exc):
+            echo(f"Indekslash muvaffaqiyatsiz bo'ldi: {exc}")
+            return False
+        # empty repo — bootstrap a placeholder so there's something to
+        # index, without asking permission again (the user already said
+        # "index this now" once; writing one small marker file to make
+        # that possible doesn't need a second confirmation)
+        placeholder = repo / ".joa-welcome.md"
+        placeholder.write_text(
+            "# JOA\n\n"
+            "Bu papka bo'sh edi — JOA birinchi ishga tushishda shu faylni "
+            "avtomatik yaratdi (indekslash uchun kamida bitta fayl kerak). "
+            "Xohlasangiz o'chirib, o'z fayllaringizni qo'shishingiz "
+            "mumkin.\n")
+        echo(f"Papka bo'sh edi — {placeholder.name} avtomatik yaratildi.")
+        try:
+            n = build_index(repo, data_dir, embed_client.embed)
+        except (OllamaError, ValueError) as retry_exc:
+            echo(f"Indekslash muvaffaqiyatsiz bo'ldi: {retry_exc}")
+            return False
+    except OllamaError as exc:
         echo(f"Indekslash muvaffaqiyatsiz bo'ldi: {exc}")
         return False
     echo(f"✓ Indekslandi: {n} chunk")

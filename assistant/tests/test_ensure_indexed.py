@@ -1,4 +1,5 @@
 from assistant.cli import _ensure_indexed
+from assistant.llm.ollama_client import OllamaError
 
 
 class FakeEmbedClient:
@@ -49,17 +50,49 @@ def test_ensure_indexed_accepted_builds_index_and_returns_true(tmp_path):
     assert any("indekslandi" in o.lower() for o in out)
 
 
-def test_ensure_indexed_build_failure_returns_false(tmp_path):
+def test_ensure_indexed_bootstraps_placeholder_when_repo_is_empty(tmp_path):
     repo = tmp_path / "repo"
     data_dir = tmp_path / "data"
     repo.mkdir()
-    # no indexable files in repo -> build_index raises ValueError
+    # repo has zero files -> build_index would normally raise ValueError;
+    # _ensure_indexed should auto-create a placeholder and retry, without
+    # asking for permission a second time (only the initial `confirm`
+    # call — for "index this now?" — is allowed to fire).
     out = []
+    confirm_calls = []
+
+    def confirm(msg):
+        confirm_calls.append(msg)
+        return True
 
     result = _ensure_indexed(repo, data_dir, FakeEmbedClient(),
+                             out.append, confirm)
+
+    assert result is True
+    assert len(confirm_calls) == 1
+    assert (data_dir / "bm25.json").exists()
+    placeholder = repo / ".joa-welcome.md"
+    assert placeholder.exists()
+    assert any("bo'sh" in o.lower() for o in out)
+
+
+def test_ensure_indexed_ollama_failure_does_not_bootstrap(tmp_path):
+    repo = tmp_path / "repo"
+    data_dir = tmp_path / "data"
+    repo.mkdir()
+    (repo / "a.py").write_text("def f():\n    return 1\n")
+    out = []
+
+    class BoomEmbedClient:
+        def embed(self, texts):
+            raise OllamaError("ollama is down")
+
+    result = _ensure_indexed(repo, data_dir, BoomEmbedClient(),
                              out.append, lambda _msg: True)
+
     assert result is False
     assert not (data_dir / "bm25.json").exists()
-    # the real failure reason is shown, not the generic decline message
-    assert any("no indexable chunks" in o.lower() for o in out)
-    assert not any("no index found" in o.lower() for o in out)
+    assert any("ollama is down" in o.lower() for o in out)
+    # a real (non-empty) repo that failed for infra reasons must not get
+    # a silently-created placeholder file
+    assert not (repo / ".joa-welcome.md").exists()

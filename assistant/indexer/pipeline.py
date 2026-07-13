@@ -107,10 +107,27 @@ def search_index(
     if not has_vector:
         return bm25_results[:config.FINAL_TOP_K]
 
-    qvec = embedder([query])[0]
-    store = QdrantStore(data_dir / "qdrant")
-    vector_results = store.search(qvec, config.VECTOR_TOP_K)
-    store.close()
+    vector_results = None
+    if has_vector:
+        try:
+            qvec = embedder([query])[0]
+            store = QdrantStore(data_dir / "qdrant")
+            try:
+                vector_results = store.search(qvec, config.VECTOR_TOP_K)
+            finally:
+                store.close()
+        except Exception:
+            # A background vector-index rebuild may be swapping the
+            # "qdrant" directory in/out concurrently (see
+            # _build_vector_background in assistant/cli.py) — a search
+            # that races that narrow window can open a transiently
+            # empty/inconsistent store. Degrade to BM25-only rather than
+            # crashing the caller; the next search will see the finished
+            # swap and work normally.
+            vector_results = None
+
+    if vector_results is None:
+        return bm25_results[:config.FINAL_TOP_K]
     if mode == "vector":
         return vector_results[:config.FINAL_TOP_K]
 

@@ -140,3 +140,34 @@ def test_search_index_hybrid_still_uses_vector_when_present(tmp_path):
 
     assert results
     assert results[0][2]["path"] == "auth.py"
+
+
+def test_search_index_falls_back_to_bm25_when_vector_store_errors(tmp_path):
+    """Simulates the narrow-window race where the vector store is
+    transiently broken (e.g. mid-swap by the background rebuild thread)
+    — search_index must degrade to BM25 results instead of raising."""
+    repo = make_repo(tmp_path)
+    data = tmp_path / "data"
+    build_bm25_index(repo, data)
+    build_vector_index(repo, data, fake_embedder)
+
+    class BrokenQdrantStore:
+        def __init__(self, path):
+            pass
+
+        def search(self, vector, top_k):
+            raise ValueError("Collection code not found")
+
+        def close(self):
+            pass
+
+    import assistant.indexer.pipeline as pipeline_module
+    original = pipeline_module.QdrantStore
+    pipeline_module.QdrantStore = BrokenQdrantStore
+    try:
+        results = search_index("JWTMiddleware", data, fake_embedder)
+    finally:
+        pipeline_module.QdrantStore = original
+
+    assert results, "expected BM25 fallback results, not empty/crash"
+    assert results[0][2]["path"] == "auth.py"

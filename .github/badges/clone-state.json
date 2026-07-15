@@ -1,5 +1,76 @@
 {
-  "total": 0,
-  "lastDate": "1970-01-01",
-  "history": []
+  "total": 185,
+  "lastDate": "2026-07-14",
+  "history": [
+    {
+      "date": "2026-07-01",
+      "daily": 0,
+      "cumulative": 0
+    },
+    {
+      "date": "2026-07-02",
+      "daily": 0,
+      "cumulative": 0
+    },
+    {
+      "date": "2026-07-03",
+      "daily": 0,
+      "cumulative": 0
+    },
+    {
+      "date": "2026-07-04",
+      "daily": 0,
+      "cumulative": 0
+    },
+    {
+      "date": "2026-07-05",
+      "daily": 0,
+      "cumulative": 0
+    },
+    {
+      "date": "2026-07-06",
+      "daily": 0,
+      "cumulative": 0
+    },
+    {
+      "date": "2026-07-07",
+      "daily": 0,
+      "cumulative": 0
+    },
+    {
+      "date": "2026-07-08",
+      "daily": 12,
+      "cumulative": 12
+    },
+    {
+      "date": "2026-07-09",
+      "daily": 1,
+      "cumulative": 13
+    },
+    {
+      "date": "2026-07-10",
+      "daily": 0,
+      "cumulative": 13
+    },
+    {
+      "date": "2026-07-11",
+      "daily": 69,
+      "cumulative": 82
+    },
+    {
+      "date": "2026-07-12",
+      "daily": 54,
+      "cumulative": 136
+    },
+    {
+      "date": "2026-07-13",
+      "daily": 47,
+      "cumulative": 183
+    },
+    {
+      "date": "2026-07-14",
+      "daily": 2,
+      "cumulative": 185
+    }
+  ]
 }

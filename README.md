@@ -39,7 +39,7 @@ tezlik uchun `--backend gemini` bilan Google Gemini'ga ham o'tish mumkin
 
 Python, Typer (CLI), Ollama (qwen2.5-coder, nomic-embed-text), Gemini API
 (ixtiyoriy ikkinchi chat backend), Qdrant, rank_bm25, tree-sitter, pytest
-(TDD, 120+ test)
+(TDD, 240+ test)
 
 ## Tezkor o'rnatish (Linux)
 

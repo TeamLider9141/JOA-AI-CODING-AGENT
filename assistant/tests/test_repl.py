@@ -2,6 +2,7 @@ import re
 import time
 from pathlib import Path
 
+import typer
 from typer.testing import CliRunner
 
 from assistant.cli import app, _repl_loop
@@ -603,6 +604,51 @@ def test_arrow_select_escape_cancels():
         with create_app_session(input=pipe_input, output=DummyOutput()):
             result = _arrow_select(["a", "b", "c"], current_index=0)
     assert result is None
+
+
+def test_arrow_select_handles_ansi_colored_option_text():
+    """/joamodel's arrow menu shows colored option text (typer.style
+    output, i.e. strings with embedded ANSI escape codes) — the menu
+    must still parse and select correctly, not just plain strings."""
+    from prompt_toolkit.application import create_app_session
+    from prompt_toolkit.input import create_pipe_input
+    from prompt_toolkit.output import DummyOutput
+
+    from assistant.cli import _arrow_select
+
+    colored = [
+        typer.style("a", fg=typer.colors.CYAN),
+        typer.style("b", fg=typer.colors.MAGENTA),
+        typer.style("c (joriy)", fg=typer.colors.GREEN, bold=True),
+    ]
+
+    with create_pipe_input() as pipe_input:
+        pipe_input.send_text("\x1b[B\x1b[B\r")  # Down, Down, Enter
+        with create_app_session(input=pipe_input, output=DummyOutput()):
+            result = _arrow_select(colored, current_index=0)
+    assert result == 2
+
+
+def test_joamodel_arrow_path_options_are_colored_and_current_marked():
+    session = FakeSession([])
+    session.client._model = "qwen2.5-coder:1.5b"
+    embed_client = FakeEmbedClient(["qwen2.5-coder:1.5b", "qwen2.5-coder:3b"])
+    lines = iter(["/joamodel", "exit"])
+    seen = {}
+
+    def fake_select(options, current_index):
+        seen["options"] = options
+        seen["current_index"] = current_index
+        return None  # cancel — no client switch needed for this check
+
+    _repl_loop(session, lambda: next(lines), lambda _o: None, embed_client,
+               lambda _t: None, select=fake_select)
+
+    options = seen["options"]
+    assert seen["current_index"] == 0
+    assert "\x1b[" in options[0] and "joriy" in options[0]
+    assert "\x1b[" in options[1] and "joriy" not in options[1]
+    assert "\x1b[" in options[2]  # "gemini" entry is also colored
 
 
 def test_arrow_confirm_ha_returns_true_and_echoes_question():

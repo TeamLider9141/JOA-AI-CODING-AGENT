@@ -11,11 +11,11 @@ import typer
 from prompt_toolkit import PromptSession
 from prompt_toolkit.application import Application
 from prompt_toolkit.completion import Completer, Completion
+from prompt_toolkit.formatted_text import ANSI, to_formatted_text
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout import Layout
 from prompt_toolkit.layout.containers import Window
 from prompt_toolkit.layout.controls import FormattedTextControl
-from prompt_toolkit.styles import Style
 
 from assistant import config
 from assistant.latex_clean import clean_latex
@@ -368,19 +368,24 @@ def agent(
     typer.echo(answer)
 
 
+def _style_option(name: str, current: str) -> str:
+    """Colorize a /joamodel option the same way regardless of whether it
+    ends up in the numeric fallback list or the arrow-key menu: current
+    model green+bold with a "(joriy)" suffix, "gemini" magenta, anything
+    else (an Ollama model) cyan."""
+    if name == current:
+        return typer.style(f"{name} (joriy)", fg=typer.colors.GREEN, bold=True)
+    if name == "gemini":
+        return typer.style(name, fg=typer.colors.MAGENTA)
+    return typer.style(name, fg=typer.colors.CYAN)
+
+
 def _numeric_select(options: list[str], current: str, read_line, echo) -> int | None:
     """Fallback selector for non-interactive/piped input: prints a
     numbered, colorized list and reads a number. Returns the chosen
     zero-based index, or None on bad/empty input or EOF."""
     for i, name in enumerate(options, start=1):
-        if name == current:
-            label = typer.style(f"{name} (joriy)",
-                                fg=typer.colors.GREEN, bold=True)
-        elif name == "gemini":
-            label = typer.style(name, fg=typer.colors.MAGENTA)
-        else:
-            label = typer.style(name, fg=typer.colors.CYAN)
-        echo(f"{i}. {label}")
+        echo(f"{i}. {_style_option(name, current)}")
     echo("Raqamni tanlang:")
     try:
         choice_line = read_line()
@@ -407,10 +412,13 @@ def _arrow_select(options: list[str], current_index: int) -> int | None:
     def _render():
         fragments = []
         for i, name in enumerate(options):
+            prefix = "❯ " if i == state["pos"] else "  "
+            parsed = to_formatted_text(ANSI(prefix + name))
             if i == state["pos"]:
-                fragments.append(("class:selected", f"❯ {name}\n"))
-            else:
-                fragments.append(("", f"  {name}\n"))
+                parsed = [(f"{style} reverse".strip(), text)
+                         for style, text in parsed]
+            fragments.extend(parsed)
+            fragments.append(("", "\n"))
         return fragments
 
     kb = KeyBindings()
@@ -436,9 +444,7 @@ def _arrow_select(options: list[str], current_index: int) -> int | None:
 
     control = FormattedTextControl(_render, focusable=True)
     layout = Layout(Window(content=control))
-    style = Style.from_dict({"selected": "reverse"})
-    app = Application(layout=layout, key_bindings=kb, style=style,
-                       full_screen=False)
+    app = Application(layout=layout, key_bindings=kb, full_screen=False)
     return app.run()
 
 
@@ -470,7 +476,8 @@ def _handle_joamodel(session, embed_client, read_line, echo,
         index = _numeric_select(options, current, read_line, echo)
     else:
         current_index = options.index(current) if current in options else 0
-        index = select(options, current_index)
+        display_options = [_style_option(name, current) for name in options]
+        index = select(display_options, current_index)
     if index is None:
         return
     selected = options[index]

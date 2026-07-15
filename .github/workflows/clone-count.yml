@@ -1,0 +1,36 @@
+name: Klon statistikasini yangilash
+
+on:
+  schedule:
+    - cron: "0 3 * * *"  # har kuni UTC 03:00 (Toshkent vaqti bilan 08:00)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  update-clone-badge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo'ni checkout qilish
+        uses: actions/checkout@v4
+
+      - name: Python o'rnatish
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Klon statistikasi, badge va grafikni yangilash
+        env:
+          GH_TOKEN: ${{ secrets.TRAFFIC_PAT }}
+          REPO: ${{ github.repository }}
+        run: python3 .github/scripts/update_clone_stats.py
+
+      - name: O'zgarishlarni commit qilish
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: klon statistikasi va grafik yangilandi"
+          file_pattern: >-
+            .github/badges/clone-count.json
+            .github/badges/clone-state.json
+            README.md

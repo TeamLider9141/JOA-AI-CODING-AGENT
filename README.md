@@ -13,6 +13,11 @@ JOA — Lokal AI Coding Agent
 Terminalda bu banner har doim **ko'k** rangda chiqadi — o'rnatishda
 (`install.sh`) va `joa` REPL har ochilganida.
 
+[![Klonlar soni](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/TeamLider9141/JOA-AI-CODING-AGENT/main/.github/badges/clone-count.json)](https://github.com/TeamLider9141/JOA-AI-CODING-AGENT)
+
+<!-- CLONE_CHART:START -->
+<!-- CLONE_CHART:END -->
+
 CPU-only, offline-first kod-yordamchi. Default holatda Ollama orqali lokal
 LLM ishlatadi — cloud API'ga bog'liq emas, kod tashqariga chiqmaydi. Xohlasa,
 tezlik uchun `--backend gemini` bilan Google Gemini'ga ham o'tish mumkin

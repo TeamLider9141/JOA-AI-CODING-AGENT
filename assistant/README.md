@@ -167,6 +167,17 @@ models (`0.5b`/`1.5b`) are tuned for code, not general knowledge or math,
 and can be confidently wrong; switch to a larger model or Gemini via
 `/joamodel` for those questions.
 
+### Watch list: Bonsai 27B
+
+[PrismML's Bonsai 27B](https://docs.prismml.com/models/bonsai-27b)
+(1-bit/ternary, 27B params, Apache 2.0, released 2026-07-14) is worth
+tracking — the 1-bit variant is ~3.5GB (down from 54GB at full
+precision), small enough for a laptop or even a phone. It's not usable
+via Joa yet: Ollama itself can't load its Q1_0 GGUF (Ollama's bundled
+`ggml` build doesn't include that tensor type). Once Ollama adds
+support, Joa needs no code changes — `/joamodel` auto-discovers whatever
+you `ollama pull`.
+
 Other slash commands: `/` or `/help` lists every command; `/clear` resets
 the conversation context to zero (keeps only the system prompt). Anything
 starting with `/` is handled locally and never sent to the LLM — unknown

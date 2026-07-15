@@ -129,6 +129,15 @@ so'raganingizda) ham endi natijani kutmasdan jonli ko'rsatadi.
 `!buyruq` bajarilayotgani) to'xtatadi, `joa`dan chiqarmaydi. `exit`/Ctrl-D
 esa butun sessiyani yopadi.
 
+## Kuzatuvda: Bonsai 27B
+
+[PrismML'ning Bonsai 27B](https://docs.prismml.com/models/bonsai-27b)i
+(1-bit/ternary, 27B, Apache 2.0) diqqatga sazovor — 1-bit versiyasi
+faqat ~3.5GB, ammo Ollama hali uning Q1_0 GGUF formatini yuklay olmaydi
+(Ollama'ning `ggml` build'ida bu tur yo'q). Ollama qo'llab-quvvatlashni
+qo'shgach, Joa'da qo'shimcha kod kerak bo'lmaydi — `/joamodel`
+`ollama pull`langan istalgan modelni avtomatik ko'radi.
+
 ## Testlar
 
 ```

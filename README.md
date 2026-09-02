@@ -13,6 +13,8 @@ JOA — Lokal AI Coding Agent
 Terminalda bu banner har doim **ko'k** rangda chiqadi — o'rnatishda
 (`install.sh`) va `joa` REPL har ochilganida.
 
+https://github.com/user-attachments/assets/79c57cb9-dece-4008-ba48-287d2a2418a4
+
 [![Klonlar soni](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/TeamLider9141/JOA-AI-CODING-AGENT/main/.github/badges/clone-count.json)](https://github.com/TeamLider9141/JOA-AI-CODING-AGENT)
 
 <!-- CLONE_CHART:START -->

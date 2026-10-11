@@ -1,12 +1,7 @@
 {
-  "total": 783,
-  "lastDate": "2026-10-09",
+  "total": 788,
+  "lastDate": "2026-10-10",
   "history": [
-    {
-      "date": "2026-08-11",
-      "daily": 7,
-      "cumulative": 357
-    },
     {
       "date": "2026-08-12",
       "daily": 5,
@@ -301,6 +296,11 @@
       "date": "2026-10-09",
       "daily": 13,
       "cumulative": 783
+    },
+    {
+      "date": "2026-10-10",
+      "daily": 5,
+      "cumulative": 788
     }
   ]
 }
